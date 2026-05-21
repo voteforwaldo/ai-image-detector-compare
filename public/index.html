@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="bg">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ИИ инструмент — factcheck.bg</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <img
+            class="brand-logo"
+            src="img/factcheck-logo.png"
+            alt="factcheck.bg"
+            width="180"
+            height="48"
+          />
+          <div class="brand-title-box">
+            <h1 class="brand-title">ИИ инструмент</h1>
+            <p class="tagline">Двоен детектор — API + Gemini един до друг</p>
+          </div>
+        </div>
+        <button type="button" class="btn-ghost" id="btn-settings" aria-haspopup="dialog">
+          Настройки
+        </button>
+      </header>
+
+      <main class="layout">
+        <section class="upload-panel">
+          <div class="media-tabs" role="tablist">
+            <span class="tab active" role="tab" aria-selected="true">Медия</span>
+            <span class="tab disabled" role="tab" aria-disabled="true">Текст</span>
+          </div>
+
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,image/tiff" hidden />
+            <div class="dropzone-inner" id="dropzone-empty">
+              <p class="drop-label">Пуснете файл тук или качете</p>
+              <p class="drop-hint">PNG · JPG · WEBP · GIF · макс. 50 МБ</p>
+              <button type="button" class="btn-primary" id="btn-upload">Качи файл</button>
+            </div>
+            <div class="preview-wrap hidden" id="preview-wrap">
+              <img id="preview-img" alt="Преглед на каченото изображение" />
+              <button type="button" class="btn-ghost btn-sm" id="btn-clear">Изчисти</button>
+            </div>
+          </div>
+
+          <div class="terminal" id="terminal" aria-live="polite">
+            <div class="terminal-line muted">[--:--:--] Изчакване на файл...</div>
+          </div>
+
+          <button type="button" class="btn-analyze hidden" id="btn-analyze" disabled>
+            Анализирай изображението
+          </button>
+        </section>
+
+        <section class="results-panel hidden" id="results-panel">
+          <h2 class="results-heading">Анализ</h2>
+          <div class="results-grid">
+            <article class="result-card" id="card-aiornot">
+              <header class="result-header aiornot">
+                <span class="provider-icon">◆</span>
+                <div>
+                  <h3>AI or Not</h3>
+                  <p class="provider-sub">Официално API · отчет ai_generated</p>
+                </div>
+              </header>
+              <div class="verdict-row">
+                <span class="verdict-badge" id="aon-verdict">—</span>
+                <span class="verdict-confidence" id="aon-confidence"></span>
+              </div>
+              <div class="meter-group">
+                <div class="meter">
+                  <div class="meter-label"><span>ИИ</span><span id="aon-ai-pct">0%</span></div>
+                  <div class="meter-track"><div class="meter-fill ai" id="aon-ai-bar" style="width: 0%"></div></div>
+                </div>
+                <div class="meter">
+                  <div class="meter-label"><span>Човек</span><span id="aon-human-pct">0%</span></div>
+                  <div class="meter-track"><div class="meter-fill human" id="aon-human-bar" style="width: 0%"></div></div>
+                </div>
+              </div>
+              <p class="result-summary" id="aon-summary"></p>
+              <div class="breakdown hidden" id="aon-breakdown">
+                <h4>Сигнали от генератори</h4>
+                <ul id="aon-generators"></ul>
+              </div>
+              <p class="result-error hidden" id="aon-error"></p>
+            </article>
+
+            <article class="result-card" id="card-gemini">
+              <header class="result-header gemini">
+                <span class="provider-icon">✦</span>
+                <div>
+                  <h3>Google Gemini</h3>
+                  <p class="provider-sub">Gemini 2.5 Flash · forensic анализ</p>
+                </div>
+              </header>
+              <div class="verdict-row">
+                <span class="verdict-badge" id="gem-verdict">—</span>
+                <span class="verdict-confidence" id="gem-confidence"></span>
+              </div>
+              <div class="meter-group">
+                <div class="meter">
+                  <div class="meter-label"><span>ИИ</span><span id="gem-ai-pct">0%</span></div>
+                  <div class="meter-track"><div class="meter-fill ai" id="gem-ai-bar" style="width: 0%"></div></div>
+                </div>
+                <div class="meter">
+                  <div class="meter-label"><span>Човек</span><span id="gem-human-pct">0%</span></div>
+                  <div class="meter-track"><div class="meter-fill human" id="gem-human-bar" style="width: 0%"></div></div>
+                </div>
+              </div>
+              <p class="result-summary" id="gem-summary"></p>
+              <p class="result-error hidden" id="gem-error"></p>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p>
+          Ключовете остават в сесията на браузъра или в сървърната среда — никога не ги качвайте в GitHub.
+          <a href="https://docs.aiornot.com/" target="_blank" rel="noopener">Документация на AI or Not API</a>
+        </p>
+      </footer>
+    </div>
+
+    <dialog class="settings-dialog" id="settings-dialog">
+      <form method="dialog" id="settings-form">
+        <h2>API ключове</h2>
+        <p class="settings-note">
+          По избор, ако сървърът има зададени <code>AIORNOT_API_KEY</code> и <code>GEMINI_API_KEY</code>.
+          Иначе поставете ключовете тук (запазват се само за тази сесия).
+        </p>
+        <label>
+          API ключ за AI or Not
+          <input type="password" name="aiornot_key" id="input-aiornot" autocomplete="off" placeholder="Bearer токен" />
+        </label>
+        <label>
+          API ключ за Google Gemini
+          <input type="password" name="gemini_key" id="input-gemini" autocomplete="off" placeholder="AIza..." />
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="remember-keys" checked />
+          Запомни за тази сесия
+        </label>
+        <div class="dialog-actions">
+          <button type="button" class="btn-ghost" id="btn-settings-cancel">Отказ</button>
+          <button type="submit" class="btn-primary">Запази</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="js/app.js" type="module"></script>
+  </body>
+</html>
