@@ -2,6 +2,16 @@ const STORAGE_KEYS = "aidetector_keys";
 
 const $ = (sel) => document.querySelector(sel);
 
+const authGate = $("#auth-gate");
+const appRoot = $("#app-root");
+const authForm = $("#auth-form");
+const authPassword = $("#auth-password");
+const authError = $("#auth-error");
+
+function fetchOpts(extra = {}) {
+  return { credentials: "include", ...extra };
+}
+
 const dropzone = $("#dropzone");
 const fileInput = $("#file-input");
 const previewWrap = $("#preview-wrap");
@@ -30,6 +40,55 @@ function apiBase() {
   if (meta?.content) return meta.content.replace(/\/$/, "");
   return "";
 }
+
+function showApp() {
+  authGate.classList.add("hidden");
+  appRoot.classList.remove("hidden");
+}
+
+function showAuthGate() {
+  authGate.classList.remove("hidden");
+  appRoot.classList.add("hidden");
+}
+
+async function initAuth() {
+  try {
+    const res = await fetch(`${apiBase()}/api/auth/status`, fetchOpts());
+    const data = await res.json();
+    if (!data.required || data.authenticated) {
+      showApp();
+      return;
+    }
+    showAuthGate();
+  } catch {
+    showApp();
+  }
+}
+
+authForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  authError.classList.add("hidden");
+  authError.textContent = "";
+
+  try {
+    const res = await fetch(`${apiBase()}/api/auth/login`, fetchOpts({
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: authPassword.value }),
+    }));
+    const data = await res.json();
+    if (!res.ok) {
+      authError.textContent = data.error || "Грешна парола";
+      authError.classList.remove("hidden");
+      return;
+    }
+    authPassword.value = "";
+    showApp();
+  } catch {
+    authError.textContent = "Неуспешен вход. Опитайте отново.";
+    authError.classList.remove("hidden");
+  }
+});
 
 function loadKeys() {
   try {
@@ -169,12 +228,18 @@ async function runAnalysis() {
   if (keys.gemini) form.append("gemini_key", keys.gemini);
 
   try {
-    const res = await fetch(`${apiBase()}/api/analyze`, {
+    const res = await fetch(`${apiBase()}/api/analyze`, fetchOpts({
       method: "POST",
       body: form,
-    });
+    }));
 
     const data = await res.json();
+    if (res.status === 401 && data.code === "auth_required") {
+      showAuthGate();
+      log("Нужен е вход с парола.", "error");
+      return;
+    }
+
     if (!res.ok) {
       throw new Error(data.error || `HTTP ${res.status}`);
     }
@@ -242,4 +307,4 @@ settingsForm.addEventListener("submit", (e) => {
   log("API ключовете са запазени за тази сесия.");
 });
 
-loadKeys();
+initAuth().then(() => loadKeys());

@@ -1,4 +1,5 @@
 import { analyzeImage } from "../lib/analyze.mjs";
+import { isAuthenticated, authDeniedResponse } from "../lib/site-auth.mjs";
 
 export const config = {
   api: {
@@ -60,6 +61,12 @@ export default async function handler(req, res) {
 
   if (req.method !== "POST") {
     res.status(405).json({ error: "Методът не е позволен" });
+    return;
+  }
+
+  if (!isAuthenticated(req.headers.cookie)) {
+    const denied = authDeniedResponse();
+    res.status(denied.status).json(denied.body);
     return;
   }
 

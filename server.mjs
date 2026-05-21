@@ -4,6 +4,13 @@ import path from "path";
 import { exec } from "child_process";
 import { fileURLToPath } from "url";
 import { analyzeImage } from "./lib/analyze.mjs";
+import {
+  isAuthRequired,
+  isAuthenticated,
+  verifyPassword,
+  buildSessionCookie,
+  authDeniedResponse,
+} from "./lib/site-auth.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, "public");
@@ -74,6 +81,9 @@ process.on("unhandledRejection", (err) => {
 
 loadEnvFile();
 logKeyStatus();
+if (isAuthRequired()) {
+  console.log("Защита с парола: активна (SITE_PASSWORD)");
+}
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -132,7 +142,48 @@ function parseMultipart(buffer, contentType) {
   return { fileBuffer, filename, mimeType, aiornotKey, geminiKey };
 }
 
+async function handleAuthStatus(req, res) {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(
+    JSON.stringify({
+      required: isAuthRequired(),
+      authenticated: isAuthenticated(req.headers.cookie),
+    })
+  );
+}
+
+async function handleAuthLogin(req, res) {
+  try {
+    const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+    if (!isAuthRequired()) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, required: false }));
+      return;
+    }
+    if (!verifyPassword(body.password)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Грешна парола" }));
+      return;
+    }
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Set-Cookie": buildSessionCookie(),
+    });
+    res.end(JSON.stringify({ ok: true, required: true }));
+  } catch {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Невалидни данни" }));
+  }
+}
+
 async function handleAnalyze(req, res) {
+  if (!isAuthenticated(req.headers.cookie)) {
+    const denied = authDeniedResponse();
+    res.writeHead(denied.status, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(denied.body));
+    return;
+  }
+
   try {
     const body = await readBody(req);
     const { fileBuffer, filename, mimeType, aiornotKey, geminiKey } = parseMultipart(
@@ -189,6 +240,16 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/api/auth/status") {
+    await handleAuthStatus(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url === "/api/auth/login") {
+    await handleAuthLogin(req, res);
     return;
   }
 

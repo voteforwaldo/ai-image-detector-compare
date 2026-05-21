@@ -13,7 +13,26 @@
     <link rel="stylesheet" href="css/app.css" />
   </head>
   <body>
-    <div class="app">
+    <div class="auth-gate hidden" id="auth-gate">
+      <div class="auth-card">
+        <img class="auth-logo" src="img/factcheck-logo.png" alt="factcheck.bg" />
+        <h2>ИИ инструмент</h2>
+        <p>Въведете парола за достъп</p>
+        <form id="auth-form">
+          <input
+            type="password"
+            id="auth-password"
+            placeholder="Парола"
+            autocomplete="current-password"
+            required
+          />
+          <p class="auth-error hidden" id="auth-error"></p>
+          <button type="submit" class="btn-primary">Вход</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="app hidden" id="app-root">
       <header class="topbar">
         <div class="brand">
           <img
@@ -130,6 +149,7 @@
           <a href="https://docs.aiornot.com/" target="_blank" rel="noopener">Документация на AI or Not API</a>
         </p>
       </footer>
+    </div>
     </div>
 
     <dialog class="settings-dialog" id="settings-dialog">
