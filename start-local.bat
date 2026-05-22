@@ -17,4 +17,6 @@ if not exist ".env" (
   exit /b 1
 )
 
+call "%~dp0stop-local.bat" nopause >nul 2>&1
 start "AI Detector" cmd /k cd /d "%~dp0" ^&^& node server.mjs
+

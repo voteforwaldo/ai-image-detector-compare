@@ -1,3 +1,6 @@
+import { buildFactcheckReport, reportToPlainText } from "./factcheck-report.js";
+import { resolveFocusRegions } from "./focus-regions.js";
+
 const STORAGE_KEYS = "aidetector_keys";
 const THEME_KEY = "aidetector-theme";
 
@@ -24,12 +27,27 @@ const btnMobileUpload = $("#btn-mobile-upload");
 const settingsDialog = $("#settings-dialog");
 const settingsForm = $("#settings-form");
 
-const summaryBanner = $("#summary-banner");
-const summaryAon = $("#summary-aon");
-const summaryGem = $("#summary-gem");
-const summaryMatch = $("#summary-match");
+const fcReport = $("#fc-report");
+const techLog = $("#tech-log");
+const fcReportTitle = $("#fc-report-title");
+const fcReportMeta = $("#fc-report-meta");
+const fcReportBadge = $("#fc-report-badge");
+const fcReportRows = $("#fc-report-rows");
+const fcReportConclusion = $("#fc-report-conclusion");
+const fcReportBullets = $("#fc-report-bullets");
+const focusOverlay = $("#focus-overlay");
+const focusLegend = $("#focus-legend");
 const loadingPanel = $("#loading-panel");
+const analyzeError = $("#analyze-error");
+const analyzeErrorMsg = $("#analyze-error-msg");
+const btnRetryAnalyze = $("#btn-retry-analyze");
 const resultsGrid = $("#results-grid");
+const exifPanel = $("#exif-panel");
+const exifSummary = $("#exif-summary");
+const exifHighlights = $("#exif-highlights");
+const exifAllHeading = $("#exif-all-heading");
+const exifAllFields = $("#exif-all-fields");
+const exifError = $("#exif-error");
 const exportActions = $("#export-actions");
 const btnCopyReport = $("#btn-copy-report");
 const btnPrintReport = $("#btn-print-report");
@@ -46,7 +64,25 @@ const VERDICT_LABELS = {
 let selectedFile = null;
 let keys = { aiornot: "", gemini: "" };
 let lastResult = null;
+let lastReport = null;
 let previewObjectUrl = null;
+
+function escHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function updateStep(step) {
+  for (let i = 1; i <= 3; i++) {
+    const el = $(`#step-item-${i}`);
+    if (!el) continue;
+    el.classList.remove("is-active", "is-done");
+    if (i < step) el.classList.add("is-done");
+    else if (i === step) el.classList.add("is-active");
+  }
+}
 
 function fetchOpts(extra = {}) {
   return { credentials: "include", ...extra };
@@ -104,7 +140,7 @@ async function initAuth() {
   }
 }
 
-authForm.addEventListener("submit", async (e) => {
+authForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   authError.classList.add("hidden");
   authError.textContent = "";
@@ -177,44 +213,120 @@ function cardSnapshot(data) {
   return { label: verdictLabel(v), pct, verdict: v };
 }
 
-function compareVerdicts(a, b) {
-  if (a.verdict === "error" || b.verdict === "error") {
-    return { type: "partial", text: "⚠ Един източник не отговори" };
-  }
-  if (a.verdict === b.verdict) {
-    return { type: "agree", text: "✓ Вердиктите съвпадат" };
-  }
-  if (a.verdict === "uncertain" || b.verdict === "uncertain") {
-    return { type: "partial", text: "⚠ Частично съвпадение" };
-  }
-  return { type: "disagree", text: "⚠ Различни вердикти" };
+function renderFactcheckReport(report) {
+  if (!report) return;
+  lastReport = report;
+  fcReportTitle.textContent = report.headline;
+  fcReportMeta.textContent = report.meta;
+  fcReportBadge.textContent = report.badge.text;
+  fcReportBadge.className = `fc-report-badge ${report.badge.type}`;
+  fcReportConclusion.textContent = report.conclusion;
+
+  fcReportRows.innerHTML = report.rows
+    .map(
+      (r) => `
+    <tr>
+      <td>${escHtml(r.source)}</td>
+      <td><span class="fc-verdict ${escHtml(r.tone)}">${escHtml(r.verdict)}</span></td>
+      <td>${escHtml(r.detail)}</td>
+    </tr>`
+    )
+    .join("");
+
+  fcReportBullets.innerHTML = report.bullets.map((b) => `<li>${escHtml(b)}</li>`).join("");
+  fcReport.classList.remove("hidden");
 }
 
-function updateSummaryBanner(aiornot, gemini) {
-  const a = cardSnapshot(aiornot);
-  const g = cardSnapshot(gemini);
+function renderFocusOverlay(regions) {
+  focusOverlay.innerHTML = "";
+  focusLegend.innerHTML = "";
 
-  summaryAon.textContent = a.pct != null ? `${a.label} (${a.pct}%)` : a.label;
-  summaryGem.textContent = g.pct != null ? `${g.label} (${g.pct}%)` : g.label;
+  if (!regions?.length) {
+    focusOverlay.classList.add("hidden");
+    focusLegend.classList.add("hidden");
+    focusOverlay.setAttribute("aria-hidden", "true");
+    return;
+  }
 
-  const match = compareVerdicts(a, g);
-  summaryMatch.textContent = match.text;
-  summaryMatch.className = `summary-match ${match.type}`;
-  summaryMatch.classList.remove("hidden");
-  summaryBanner.classList.remove("hidden");
+  focusOverlay.classList.remove("hidden");
+  focusLegend.classList.remove("hidden");
+  focusOverlay.setAttribute("aria-hidden", "false");
+
+  for (const r of regions) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `focus-marker ${r.severity}`;
+    btn.style.left = `${r.x * 100}%`;
+    btn.style.top = `${r.y * 100}%`;
+    btn.style.width = `${r.w * 100}%`;
+    btn.style.height = `${r.h * 100}%`;
+    btn.title = r.note;
+    btn.setAttribute("aria-label", `${r.label}: ${r.note}`);
+    btn.innerHTML = `<span class="focus-marker-num">${r.id}</span>`;
+    focusOverlay.appendChild(btn);
+
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="focus-legend-num">${r.id}</span> <strong>${escHtml(r.label)}</strong> — ${escHtml(r.note)}`;
+    focusLegend.appendChild(li);
+  }
+}
+
+function showAnalyzeError(message) {
+  analyzeErrorMsg.textContent = message;
+  analyzeError.classList.remove("hidden");
+}
+
+function hideAnalyzeError() {
+  analyzeError.classList.add("hidden");
+  analyzeErrorMsg.textContent = "";
 }
 
 function showLoading() {
-  summaryBanner.classList.add("hidden");
+  updateStep(2);
+  hideAnalyzeError();
+  fcReport.classList.add("hidden");
   resultsGrid.classList.add("hidden");
+  exifPanel.classList.add("hidden");
   exportActions.classList.add("hidden");
   loadingPanel.classList.remove("hidden");
+  renderFocusOverlay([]);
 }
 
-function hideLoading() {
+function fetchErrorMessage(err) {
+  const msg = err?.message || "";
+  if (msg === "Failed to fetch" || err?.name === "TypeError") {
+    return (
+      "Няма връзка със сървъра. Стартирайте start-local.bat и оставете прозореца отворен. " +
+      "Отворете http://127.0.0.1:3000 (не само localhost, ако връзката отказва)."
+    );
+  }
+  if (err?.name === "AbortError") {
+    return "Анализът отне твърде много време (над 5 мин). Опитайте с по-малък файл.";
+  }
+  return msg || "Анализът не успя";
+}
+
+async function checkServerHealth() {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch(`${apiBase()}/api/health`, fetchOpts({ signal: ctrl.signal }));
+    if (!res.ok) throw new Error("health");
+  } catch (err) {
+    throw new Error(fetchErrorMessage(err));
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function hideLoading(finished = true) {
   loadingPanel.classList.add("hidden");
-  resultsGrid.classList.remove("hidden");
-  exportActions.classList.remove("hidden");
+  if (finished) {
+    resultsGrid.classList.remove("hidden");
+    exifPanel.classList.remove("hidden");
+    exportActions.classList.remove("hidden");
+    updateStep(3);
+  }
 }
 
 function imageFromClipboard(event) {
@@ -276,14 +388,18 @@ function resetUpload() {
   }
   selectedFile = null;
   lastResult = null;
+  lastReport = null;
   previewImg.removeAttribute("src");
   previewWrap.classList.add("hidden");
   dropzoneEmpty.classList.remove("hidden");
   resultsPanel.classList.add("hidden");
   layout.classList.remove("has-results");
-  summaryBanner.classList.add("hidden");
+  fcReport.classList.add("hidden");
+  hideAnalyzeError();
   mobileBar.classList.add("hidden");
   fileInput.value = "";
+  renderFocusOverlay([]);
+  updateStep(1);
   clearTerminal();
   log("Готов за ново качване.", "muted");
 }
@@ -328,6 +444,58 @@ function updateCard(prefix, data) {
   return data;
 }
 
+function updateExiftool(data) {
+  exifSummary.textContent = "";
+  exifHighlights.innerHTML = "";
+  exifAllFields.innerHTML = "";
+  if (exifAllHeading) exifAllHeading.classList.add("hidden");
+  exifError.classList.add("hidden");
+  exifError.textContent = "";
+
+  if (!data?.ok) {
+    exifSummary.textContent = "Метаданните не можаха да се прочетат.";
+    exifError.textContent = data?.error || "ExifTool заявката не успя";
+    exifError.classList.remove("hidden");
+    return;
+  }
+
+  exifSummary.textContent = data.summary || "Няма резюме.";
+
+  exifHighlights.classList.remove("hidden");
+  const aiHighlights = (data.highlights || []).filter((h) => h.aiMarker);
+  if (aiHighlights.length) {
+    for (const h of aiHighlights) {
+      const li = document.createElement("li");
+      li.className = "exif-warn";
+      li.textContent = h.text;
+      exifHighlights.appendChild(li);
+    }
+  } else {
+    exifHighlights.classList.add("hidden");
+  }
+
+  const fields = data.allFields || [];
+  if (exifAllHeading) {
+    exifAllHeading.textContent = `Всички полета от ExifTool (${fields.length})`;
+    exifAllHeading.classList.remove("hidden");
+  }
+  if (fields.length) {
+    for (const f of fields) {
+      const dt = document.createElement("dt");
+      dt.textContent = f.label;
+      const dd = document.createElement("dd");
+      dd.textContent = f.value;
+      exifAllFields.appendChild(dt);
+      exifAllFields.appendChild(dd);
+    }
+  } else {
+    const empty = document.createElement("p");
+    empty.className = "exif-empty";
+    empty.textContent = "ExifTool не върна полета с метаданни за този файл.";
+    exifAllFields.appendChild(empty);
+  }
+}
+
 function updateAiornotGenerators(generators) {
   const breakdown = $("#aon-breakdown");
   const list = $("#aon-generators");
@@ -347,63 +515,52 @@ function updateAiornotGenerators(generators) {
 }
 
 function buildReportText() {
-  if (!lastResult) return "";
-  const { aiornot, gemini, fileName, at } = lastResult;
-  const a = cardSnapshot(aiornot);
-  const g = cardSnapshot(gemini);
-  const match = compareVerdicts(a, g);
+  if (!lastReport) return "";
+  let text = reportToPlainText(lastReport);
+  if (!lastResult) return text;
 
-  let text = `ОТЧЕТ — ИИ инструмент (factcheck.bg)\n`;
-  text += `Дата: ${at}\n`;
-  text += `Файл: ${fileName}\n`;
-  text += `${match.text}\n\n`;
-  text += `--- AI or Not ---\n`;
-  if (aiornot?.ok) {
-    text += `Вердикт: ${verdictLabel(aiornot.verdict)} (${Math.max(aiornot.aiPercent, aiornot.humanPercent)}%)\n`;
-    text += `ИИ: ${aiornot.aiPercent}% | Човек: ${aiornot.humanPercent}%\n`;
-    text += `${aiornot.summary || ""}\n`;
-    if (aiornot.generators?.length) {
-      text += `Генератори: ${aiornot.generators.map((x) => `${x.name} ${x.confidence}%`).join(", ")}\n`;
-    }
-  } else {
-    text += `Грешка: ${aiornot?.error || "—"}\n`;
-  }
-  text += `\n--- Google Gemini ---\n`;
-  if (gemini?.ok) {
-    text += `Вердикт: ${verdictLabel(gemini.verdict)} (${gemini.confidencePercent ?? Math.max(gemini.aiPercent, gemini.humanPercent)}%)\n`;
-    text += `ИИ: ${gemini.aiPercent}% | Човек: ${gemini.humanPercent}%\n`;
-    text += `${gemini.summary || ""}\n`;
-  } else {
-    text += `Грешка: ${gemini?.error || "—"}\n`;
-  }
+  const { aiornot, gemini, exiftool } = lastResult;
+  text += `\n--- Подробности ---\n`;
+  if (aiornot?.ok) text += `AI or Not: ${aiornot.summary || ""}\n`;
+  if (gemini?.ok) text += `Gemini: ${gemini.summary || ""}\n`;
+  if (exiftool?.ok) text += `ExifTool: ${exiftool.summary || ""}\n`;
   return text;
 }
 
 function buildPrintHtml() {
-  if (!lastResult) return "";
-  const { aiornot, gemini, fileName, at, previewSrc } = lastResult;
-  const a = cardSnapshot(aiornot);
-  const g = cardSnapshot(gemini);
-  const match = compareVerdicts(a, g);
+  if (!lastResult || !lastReport) return "";
+  const { aiornot, gemini, exiftool, previewSrc } = lastResult;
 
-  const esc = (s) =>
-    String(s ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+  const tableRows = lastReport.rows
+    .map(
+      (r) =>
+        `<tr><td>${escHtml(r.source)}</td><td>${escHtml(r.verdict)}</td><td>${escHtml(r.detail)}</td></tr>`
+    )
+    .join("");
+
+  const bullets = lastReport.bullets.map((b) => `<li>${escHtml(b)}</li>`).join("");
 
   return `
-    <h1>ИИ инструмент — factcheck.bg</h1>
-    <p class="meta">${esc(at)} · ${esc(fileName)} · ${esc(match.text)}</p>
+    <h1>Фактчек отчет — factcheck.bg</h1>
+    <p class="meta">${escHtml(lastReport.meta)}</p>
+    <h2>${escHtml(lastReport.headline)}</h2>
+    <p><strong>${escHtml(lastReport.badge.text)}</strong></p>
     ${previewSrc ? `<img src="${previewSrc}" alt="Анализирано изображение" />` : ""}
-    <section>
-      <h2>AI or Not — ${esc(a.label)}${a.pct != null ? ` (${a.pct}%)` : ""}</h2>
-      <pre>${esc(aiornot?.ok ? aiornot.summary : aiornot?.error || "—")}</pre>
-    </section>
-    <section>
-      <h2>Google Gemini — ${esc(g.label)}${g.pct != null ? ` (${g.pct}%)` : ""}</h2>
-      <pre>${esc(gemini?.ok ? gemini.summary : gemini?.error || "—")}</pre>
-    </section>
+    <table class="fc-report-table">
+      <thead><tr><th>Източник</th><th>Резултат</th><th>Детайл</th></tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+    <h3>Общо заключение</h3>
+    <p>${escHtml(lastReport.conclusion)}</p>
+    <h3>Какво да проверите</h3>
+    <ul>${bullets}</ul>
+    <h3>Подробности</h3>
+    <p><strong>AI or Not:</strong></p>
+    <pre>${escHtml(aiornot?.ok ? aiornot.summary : aiornot?.error || "—")}</pre>
+    <p><strong>Gemini:</strong></p>
+    <pre>${escHtml(gemini?.ok ? gemini.summary : gemini?.error || "—")}</pre>
+    <p><strong>ExifTool:</strong></p>
+    <pre>${escHtml(exiftool?.ok ? exiftool.summary : exiftool?.error || "—")}</pre>
   `;
 }
 
@@ -434,10 +591,12 @@ async function runAnalysis() {
 
   loadKeys();
   clearTerminal();
-  log("Анализира се с AI or Not и Gemini...");
+  log("Анализира се с AI or Not, Gemini и ExifTool...");
   resultsPanel.classList.remove("hidden");
   layout.classList.add("has-results");
+  updateStep(2);
   showLoading();
+  if (techLog) techLog.open = false;
 
   const form = new FormData();
   form.append("image", selectedFile);
@@ -445,16 +604,24 @@ async function runAnalysis() {
   if (keys.gemini) form.append("gemini_key", keys.gemini);
 
   try {
+    await checkServerHealth();
+
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 300000);
+
     const res = await fetch(`${apiBase()}/api/analyze`, fetchOpts({
       method: "POST",
       body: form,
+      signal: ctrl.signal,
     }));
+    clearTimeout(timeout);
 
     const data = await safeJson(res);
     if (res.status === 401 && data.code === "auth_required") {
       showAuthGate();
       log("Нужен е вход с парола.", "error");
-      hideLoading();
+      hideLoading(false);
+      updateStep(2);
       return;
     }
 
@@ -463,17 +630,36 @@ async function runAnalysis() {
     }
 
     hideLoading();
-    updateCard("aon", data.aiornot);
-    updateCard("gem", data.gemini);
-    updateSummaryBanner(data.aiornot, data.gemini);
+
+    const focusRegions = resolveFocusRegions(data.gemini);
+    const at = new Date().toLocaleString("bg-BG");
 
     lastResult = {
       aiornot: data.aiornot,
       gemini: data.gemini,
+      exiftool: data.exiftool,
+      focusRegions,
       fileName: selectedFile.name,
-      at: new Date().toLocaleString("bg-BG"),
+      at,
       previewSrc: previewImg.src,
     };
+
+    updateCard("aon", data.aiornot);
+    updateCard("gem", data.gemini);
+    updateExiftool(data.exiftool);
+    renderFocusOverlay(focusRegions);
+    renderFactcheckReport(
+      buildFactcheckReport({
+        aiornot: data.aiornot,
+        gemini: data.gemini,
+        exiftool: data.exiftool,
+        fileName: selectedFile.name,
+        at,
+        focusRegions,
+      })
+    );
+
+    fcReport.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
     if (data.aiornot?.ok) {
       updateAiornotGenerators(data.aiornot.generators);
@@ -490,13 +676,28 @@ async function runAnalysis() {
       log(`Gemini — грешка: ${data.gemini?.error}`, "error");
     }
 
+    if (data.exiftool?.ok) {
+      const exifNote = data.exiftool.hasAiMarkers
+        ? "ИИ маркери в метаданни"
+        : `${data.exiftool.allFields?.length ?? data.exiftool.tagCount ?? 0} полета`;
+      log(`ExifTool: ${exifNote}`);
+    } else {
+      log(`ExifTool — грешка: ${data.exiftool?.error}`, "error");
+    }
+
     log("Готово.");
   } catch (err) {
-    hideLoading();
-    log(err.message || "Анализът не успя", "error");
+    hideLoading(false);
+    updateStep(2);
+    const friendly = fetchErrorMessage(err);
+    showAnalyzeError(friendly);
+    log(friendly, "error");
+    if (techLog) techLog.open = true;
     showToast("Анализът не успя");
   }
 }
+
+btnRetryAnalyze?.addEventListener("click", () => runAnalysis());
 
 dropzone.addEventListener("click", (e) => {
   if (e.target.closest("button")) return;
@@ -614,5 +815,17 @@ function toggleTheme() {
 $("#btn-theme")?.addEventListener("click", toggleTheme);
 $("#btn-theme-auth")?.addEventListener("click", toggleTheme);
 
-initTheme();
-initAuth().then(() => loadKeys());
+function boot() {
+  try {
+    initTheme();
+    updateStep(1);
+    initAuth()
+      .then(() => loadKeys())
+      .catch(() => showApp());
+  } catch (err) {
+    console.error("Стартиране:", err);
+    showApp();
+  }
+}
+
+boot();

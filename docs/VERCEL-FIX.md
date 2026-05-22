@@ -19,6 +19,7 @@ Use the normal form: **Key** + **Value** fields.
 |-----|--------|
 | `AIORNOT_API_KEY` | your key (no quotes) |
 | `GEMINI_API_KEY` | your key (no quotes) |
+| `GEMINI_MODEL` | `gemini-3.5-flash` (optional) |
 | `SITE_PASSWORD` | your password (optional) |
 
 For each variable, tick **Production** (and Preview if you want).

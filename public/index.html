@@ -50,7 +50,7 @@
       </div>
     </div>
 
-    <div class="app hidden" id="app-root">
+    <div class="app" id="app-root">
       <header class="topbar">
         <div class="brand">
           <img
@@ -62,7 +62,7 @@
           />
           <div class="brand-title-box">
             <h1 class="brand-title">ИИ инструмент</h1>
-            <p class="tagline">Двоен детектор — API + Gemini</p>
+            <p class="tagline">API · Gemini · ExifTool</p>
           </div>
         </div>
         <div class="topbar-actions">
@@ -81,6 +81,25 @@
           </button>
         </div>
       </header>
+
+      <nav class="step-nav" id="step-nav" aria-label="Стъпки">
+        <ol class="step-list">
+          <li class="step-item is-active" data-step="1" id="step-item-1">
+            <span class="step-num">1</span>
+            <span class="step-text">Качи</span>
+          </li>
+          <li class="step-connector" aria-hidden="true"></li>
+          <li class="step-item" data-step="2" id="step-item-2">
+            <span class="step-num">2</span>
+            <span class="step-text">Анализ</span>
+          </li>
+          <li class="step-connector" aria-hidden="true"></li>
+          <li class="step-item" data-step="3" id="step-item-3">
+            <span class="step-num">3</span>
+            <span class="step-text">Отчет</span>
+          </li>
+        </ol>
+      </nav>
 
       <main class="layout" id="main-layout">
         <section class="upload-panel">
@@ -102,7 +121,11 @@
               <button type="button" class="btn-primary btn-lg" id="btn-upload">Избери файл</button>
             </div>
             <div class="preview-wrap hidden" id="preview-wrap">
-              <img id="preview-img" alt="Преглед на каченото изображение" />
+              <div class="preview-stage" id="preview-stage">
+                <img id="preview-img" alt="Преглед на каченото изображение" />
+                <div class="focus-overlay hidden" id="focus-overlay" aria-hidden="true"></div>
+              </div>
+              <ul class="focus-legend hidden" id="focus-legend" aria-label="Зони за внимание"></ul>
               <div class="preview-actions">
                 <button type="button" class="btn-ghost btn-sm" id="btn-clear">Нова снимка</button>
                 <button type="button" class="btn-primary btn-sm" id="btn-analyze">Анализирай отново</button>
@@ -110,33 +133,56 @@
             </div>
           </div>
 
-          <div class="terminal" id="terminal" aria-live="polite">
-            <div class="terminal-line muted">Готов за качване...</div>
-          </div>
+          <details class="tech-log" id="tech-log">
+            <summary>Технически детайли</summary>
+            <div class="terminal" id="terminal" aria-live="polite">
+              <div class="terminal-line muted">Готов за качване...</div>
+            </div>
+          </details>
         </section>
 
         <section class="results-panel hidden" id="results-panel">
+          <article class="fc-report hidden" id="fc-report">
+            <header class="fc-report-head">
+              <div class="fc-report-intro">
+                <p class="fc-report-kicker">Фактчек отчет</p>
+                <h2 class="fc-report-title" id="fc-report-title">—</h2>
+                <p class="fc-report-meta" id="fc-report-meta"></p>
+              </div>
+              <span class="fc-report-badge partial" id="fc-report-badge">—</span>
+            </header>
+            <table class="fc-report-table">
+              <thead>
+                <tr>
+                  <th scope="col">Източник</th>
+                  <th scope="col">Резултат</th>
+                  <th scope="col">Детайл</th>
+                </tr>
+              </thead>
+              <tbody id="fc-report-rows"></tbody>
+            </table>
+            <div class="fc-report-block">
+              <h3>Общо заключение</h3>
+              <p id="fc-report-conclusion"></p>
+            </div>
+            <div class="fc-report-block">
+              <h3>Какво да проверите</h3>
+              <ul class="fc-report-bullets" id="fc-report-bullets"></ul>
+            </div>
+          </article>
+
           <div class="results-toolbar">
-            <h2 class="results-heading">Резултат</h2>
+            <h2 class="results-heading">Подробности</h2>
             <div class="export-actions hidden" id="export-actions">
               <button type="button" class="btn-ghost btn-sm" id="btn-copy-report">Копирай отчет</button>
               <button type="button" class="btn-ghost btn-sm" id="btn-print-report">PDF / Печат</button>
             </div>
           </div>
 
-          <div class="summary-banner hidden" id="summary-banner" role="status">
-            <div class="summary-verdicts">
-              <div class="summary-item">
-                <span class="summary-label">AI or Not</span>
-                <strong id="summary-aon">—</strong>
-              </div>
-              <div class="summary-divider" aria-hidden="true"></div>
-              <div class="summary-item">
-                <span class="summary-label">Gemini</span>
-                <strong id="summary-gem">—</strong>
-              </div>
-            </div>
-            <span class="summary-match hidden" id="summary-match"></span>
+          <div class="analyze-error hidden" id="analyze-error" role="alert">
+            <p class="analyze-error-title">Анализът не успя</p>
+            <p class="analyze-error-msg" id="analyze-error-msg"></p>
+            <button type="button" class="btn-primary btn-sm" id="btn-retry-analyze">Опитай отново</button>
           </div>
 
           <div class="loading-panel hidden" id="loading-panel">
@@ -152,7 +198,16 @@
               <div class="sk-line sk-bar short"></div>
               <p class="loading-label">Gemini анализира...</p>
             </div>
+            <div class="loading-card skeleton loading-card-wide">
+              <div class="sk-line sk-title"></div>
+              <div class="sk-line sk-bar"></div>
+              <div class="sk-line sk-bar short"></div>
+              <p class="loading-label">ExifTool чете метаданни...</p>
+            </div>
           </div>
+
+          <details class="details-sources" id="details-sources" open>
+            <summary>Подробни резултати по източник</summary>
 
           <div class="results-grid hidden" id="results-grid">
             <article class="result-card" id="card-aiornot">
@@ -202,7 +257,7 @@
                 <span class="provider-icon">✦</span>
                 <div>
                   <h3>Google Gemini</h3>
-                  <p class="provider-sub">2.5 Flash · forensic</p>
+                  <p class="provider-sub">3.5 Flash · forensic</p>
                 </div>
               </header>
               <div class="verdict-row">
@@ -234,7 +289,33 @@
               <p class="result-summary" id="gem-summary"></p>
               <p class="result-error hidden" id="gem-error"></p>
             </article>
+
           </div>
+
+          <article class="exif-panel hidden" id="exif-panel">
+            <header class="result-header exiftool">
+              <span class="provider-icon">⎔</span>
+              <div>
+                <h3>
+                  <a
+                    href="https://github.com/exiftool/exiftool"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="exif-title-link"
+                    >ExifTool</a
+                  >
+                </h3>
+                <p class="provider-sub">Метаданни на файла · обяснения на български</p>
+              </div>
+            </header>
+            <p class="exif-summary" id="exif-summary"></p>
+            <ul class="exif-highlights" id="exif-highlights" aria-label="Обяснения за ИИ маркери"></ul>
+            <h4 class="exif-all-heading" id="exif-all-heading">Всички полета от ExifTool</h4>
+            <dl class="exif-all-fields" id="exif-all-fields" aria-label="Всички метаданни"></dl>
+            <p class="result-error hidden" id="exif-error"></p>
+          </article>
+
+          </details>
         </section>
       </main>
 
@@ -247,6 +328,8 @@
           <a href="https://www.factcheck.bg/" target="_blank" rel="noopener">factcheck.bg</a>
           ·
           <a href="https://docs.aiornot.com/" target="_blank" rel="noopener">AI or Not API</a>
+          ·
+          <a href="https://github.com/exiftool/exiftool" target="_blank" rel="noopener">ExifTool</a>
         </p>
       </footer>
     </div>
@@ -280,6 +363,13 @@
 
     <div class="toast hidden" id="toast" role="status"></div>
 
-    <script src="js/app.js" type="module"></script>
+    <script type="module" src="js/app.js"></script>
+    <script>
+      window.addEventListener("error", function (e) {
+        if (e.message && document.getElementById("app-root")?.classList.contains("hidden")) {
+          document.getElementById("app-root")?.classList.remove("hidden");
+        }
+      });
+    </script>
   </body>
 </html>

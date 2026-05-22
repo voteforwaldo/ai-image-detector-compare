@@ -15,16 +15,19 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, "public");
 const PORT = Number(String(process.env.PORT || 3000).trim()) || 3000;
-const HOST = "127.0.0.1";
+const HOST = process.env.HOST || "0.0.0.0";
 const MAX_BYTES = 50 * 1024 * 1024;
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
+  ".mjs": "application/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".ico": "image/x-icon",
+  ".webp": "image/webp",
 };
 
 function loadEnvFile() {
@@ -71,12 +74,10 @@ function logKeyStatus() {
 
 process.on("uncaughtException", (err) => {
   console.error("Неочаквана грешка:", err);
-  process.exit(1);
 });
 
 process.on("unhandledRejection", (err) => {
-  console.error("Неочаквана грешка:", err);
-  process.exit(1);
+  console.error("Необработено отхвърляне:", err);
 });
 
 loadEnvFile();
@@ -205,8 +206,21 @@ async function handleAnalyze(req, res) {
     }
 
     const result = await analyzeImage(fileBuffer, filename, mimeType, keys);
+    const payload = {
+      aiornot: result.aiornot,
+      gemini: result.gemini
+        ? {
+            ...result.gemini,
+            rawText: undefined,
+          }
+        : result.gemini,
+      exiftool: result.exiftool,
+    };
+    if (payload.aiornot?.ok) {
+      payload.aiornot = { ...payload.aiornot, raw: undefined };
+    }
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(result));
+    res.end(JSON.stringify(payload));
   } catch (err) {
     res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: err.message || "Анализът не успя" }));
@@ -302,8 +316,9 @@ server.on("error", (err) => {
 });
 
 server.listen(PORT, HOST, () => {
-  const url = `http://${HOST}:${PORT}`;
+  const url = `http://127.0.0.1:${PORT}`;
   console.log(`Сървърът работи: ${url}`);
+  console.log(`Също: http://localhost:${PORT}`);
   console.log("Оставете този прозорец отворен. Ctrl+C за спиране.");
   openBrowser(url);
 });

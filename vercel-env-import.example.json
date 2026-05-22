@@ -10,6 +10,11 @@
     "target": ["production", "preview", "development"]
   },
   {
+    "key": "GEMINI_MODEL",
+    "value": "gemini-3.5-flash",
+    "target": ["production", "preview", "development"]
+  },
+  {
     "key": "SITE_PASSWORD",
     "value": "REPLACE_WITH_YOUR_SITE_PASSWORD",
     "target": ["production", "preview", "development"]

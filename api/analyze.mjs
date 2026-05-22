@@ -89,5 +89,18 @@ export default withJson(async (req, res) => {
 
   const { analyzeImage } = await import("../lib/analyze.mjs");
   const result = await analyzeImage(fileBuffer, filename, mimeType, keys);
-  sendJson(res, 200, result);
+  const payload = {
+    aiornot: result.aiornot,
+    gemini: result.gemini
+      ? {
+          ...result.gemini,
+          rawText: undefined,
+        }
+      : result.gemini,
+    exiftool: result.exiftool,
+  };
+  if (payload.aiornot?.ok) {
+    payload.aiornot = { ...payload.aiornot, raw: undefined };
+  }
+  sendJson(res, 200, payload);
 });
