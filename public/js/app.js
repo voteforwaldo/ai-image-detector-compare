@@ -126,17 +126,46 @@ function showAuthGate() {
   appRoot.classList.add("hidden");
 }
 
+function showAuthGateError(message) {
+  showAuthGate();
+  if (message) {
+    authError.textContent = message;
+    authError.classList.remove("hidden");
+  }
+}
+
 async function initAuth() {
   try {
     const res = await fetch(`${apiBase()}/api/auth-status`, fetchOpts());
-    const data = await safeJson(res);
-    if (!data.required || data.authenticated) {
+    let data;
+    try {
+      data = await safeJson(res);
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok || !data) {
+      showAuthGateError(
+        "Сървърът не отговори при проверка на паролата. Опитайте отново след минута."
+      );
+      return;
+    }
+
+    if (!data.required) {
       showApp();
       return;
     }
+
+    if (data.authenticated) {
+      showApp();
+      return;
+    }
+
     showAuthGate();
   } catch {
-    showApp();
+    showAuthGateError(
+      "Няма връзка с API. Ако сайтът е на Vercel, проверете deployment и SITE_PASSWORD."
+    );
   }
 }
 
@@ -819,9 +848,7 @@ function boot() {
   try {
     initTheme();
     updateStep(1);
-    initAuth()
-      .then(() => loadKeys())
-      .catch(() => showApp());
+    initAuth().then(() => loadKeys());
   } catch (err) {
     console.error("Стартиране:", err);
     showApp();
