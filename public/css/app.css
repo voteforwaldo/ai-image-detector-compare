@@ -180,6 +180,17 @@ body {
   color: var(--text-muted);
 }
 
+.drop-hint kbd {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 #fff;
+}
+
 .preview-wrap {
   width: 100%;
   padding: 0.75rem;

@@ -216,6 +216,41 @@ function hideLoading() {
   exportActions.classList.remove("hidden");
 }
 
+function imageFromClipboard(event) {
+  const items = event.clipboardData?.items;
+  if (!items?.length) return null;
+
+  for (const item of items) {
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      if (file) return file;
+    }
+  }
+
+  for (const item of items) {
+    if (item.kind === "string" && item.type === "text/html") {
+      const html = event.clipboardData.getData("text/html");
+      const srcMatch = /<img[^>]+src=["']([^"']+)["']/i.exec(html || "");
+      if (srcMatch?.[1]?.startsWith("data:image/")) {
+        return dataUrlToFile(srcMatch[1]);
+      }
+    }
+  }
+
+  return null;
+}
+
+function dataUrlToFile(dataUrl) {
+  const [header, base64] = dataUrl.split(",");
+  if (!base64) return null;
+  const mime = /data:([^;]+)/.exec(header)?.[1] || "image/png";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const ext = mime.split("/")[1]?.replace("jpeg", "jpg") || "png";
+  return new File([bytes], `clipboard-${Date.now()}.${ext}`, { type: mime });
+}
+
 function setFile(file) {
   if (!file || !file.type.startsWith("image/")) {
     log("Моля, изберете файл с изображение.", "error");
@@ -506,6 +541,19 @@ dropzone.addEventListener("drop", (e) => {
   dropzone.classList.remove("dragover");
   const file = e.dataTransfer.files[0];
   if (file) setFile(file);
+});
+
+document.addEventListener("paste", (e) => {
+  if (e.target.closest("input, textarea, dialog")) return;
+  if (authGate.classList.contains("hidden") === false) return;
+  if (appRoot.classList.contains("hidden")) return;
+
+  const file = imageFromClipboard(e);
+  if (!file) return;
+
+  e.preventDefault();
+  log("Поставено от клипборда (Ctrl+V).");
+  setFile(file);
 });
 
 $("#btn-settings").addEventListener("click", () => {
