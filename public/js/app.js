@@ -1,4 +1,5 @@
 const STORAGE_KEYS = "aidetector_keys";
+const THEME_KEY = "aidetector-theme";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -572,4 +573,46 @@ settingsForm.addEventListener("submit", (e) => {
   showToast("Ключовете са запазени");
 });
 
+function getTheme() {
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  const next = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", next);
+  try {
+    localStorage.setItem(THEME_KEY, next);
+  } catch {
+    /* ignore */
+  }
+  const btn = $("#btn-theme");
+  if (btn) {
+    btn.setAttribute("aria-label", next === "dark" ? "Светла тема" : "Тъмна тема");
+    btn.title = next === "dark" ? "Светла тема" : "Тъмна тема";
+  }
+}
+
+function initTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === "dark" || saved === "light") {
+      applyTheme(saved);
+      return;
+    }
+  } catch {
+    /* ignore */
+  }
+  if (document.documentElement.getAttribute("data-theme") !== "dark") {
+    applyTheme("light");
+  }
+}
+
+function toggleTheme() {
+  applyTheme(getTheme() === "dark" ? "light" : "dark");
+}
+
+$("#btn-theme")?.addEventListener("click", toggleTheme);
+$("#btn-theme-auth")?.addEventListener("click", toggleTheme);
+
+initTheme();
 initAuth().then(() => loadKeys());

@@ -11,6 +11,14 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="css/app.css" />
+    <script>
+      try {
+        const t = localStorage.getItem("aidetector-theme");
+        if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      } catch (_) {}
+    </script>
   </head>
   <body>
     <div class="auth-gate hidden" id="auth-gate">
@@ -18,6 +26,16 @@
         <img class="auth-logo" src="img/factcheck-logo.png" alt="factcheck.bg" />
         <h2>ИИ инструмент</h2>
         <p>Въведете парола за достъп</p>
+        <button
+          type="button"
+          class="btn-ghost theme-toggle auth-theme-toggle"
+          id="btn-theme-auth"
+          aria-label="Превключи тъмна тема"
+          title="Превключи тема"
+        >
+          <span class="theme-icon theme-icon-light" aria-hidden="true">☀</span>
+          <span class="theme-icon theme-icon-dark" aria-hidden="true">☽</span>
+        </button>
         <form id="auth-form">
           <input
             type="password"
@@ -47,9 +65,21 @@
             <p class="tagline">Двоен детектор — API + Gemini</p>
           </div>
         </div>
-        <button type="button" class="btn-ghost" id="btn-settings" aria-haspopup="dialog">
-          Настройки
-        </button>
+        <div class="topbar-actions">
+          <button
+            type="button"
+            class="btn-ghost theme-toggle"
+            id="btn-theme"
+            aria-label="Превключи тъмна тема"
+            title="Превключи тема"
+          >
+            <span class="theme-icon theme-icon-light" aria-hidden="true">☀</span>
+            <span class="theme-icon theme-icon-dark" aria-hidden="true">☽</span>
+          </button>
+          <button type="button" class="btn-ghost" id="btn-settings" aria-haspopup="dialog">
+            Настройки
+          </button>
+        </div>
       </header>
 
       <main class="layout" id="main-layout">
