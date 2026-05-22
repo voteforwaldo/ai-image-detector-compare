@@ -1,0 +1,17 @@
+[
+  {
+    "key": "AIORNOT_API_KEY",
+    "value": "REPLACE_WITH_YOUR_AIORNOT_KEY",
+    "target": ["production", "preview", "development"]
+  },
+  {
+    "key": "GEMINI_API_KEY",
+    "value": "REPLACE_WITH_YOUR_GEMINI_KEY",
+    "target": ["production", "preview", "development"]
+  },
+  {
+    "key": "SITE_PASSWORD",
+    "value": "REPLACE_WITH_YOUR_SITE_PASSWORD",
+    "target": ["production", "preview", "development"]
+  }
+]
