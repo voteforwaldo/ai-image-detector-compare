@@ -1,10 +1,4 @@
-import { sendJson, withJson } from "../lib/api-util.mjs";
-
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
+import { readJsonBody, sendJson, withJson } from "../lib/api-util.mjs";
 
 export default withJson(async (req, res) => {
   if (req.method !== "POST") {
@@ -21,7 +15,13 @@ export default withJson(async (req, res) => {
     return;
   }
 
-  const body = req.body && typeof req.body === "object" ? req.body : {};
+  let body = {};
+  try {
+    body = await readJsonBody(req);
+  } catch {
+    sendJson(res, 400, { error: "Невалиден JSON в заявката" });
+    return;
+  }
 
   if (!verifyPassword(body.password)) {
     sendJson(res, 401, { error: "Грешна парола" });

@@ -4,17 +4,17 @@
   "description": "Compare AI or Not API vs Google Gemini on the same uploaded image",
   "type": "module",
   "scripts": {
-    "start": "node server.mjs",
-    "dev": "node --watch server.mjs"
+    "start": "node dev-server.mjs",
+    "dev": "node --watch dev-server.mjs"
   },
   "engines": {
     "node": "20.x"
   },
   "dependencies": {
-    "exifr": "^7.1.3",
-    "exiftool-vendored": "^35.20.0"
+    "exifr": "^7.1.3"
   },
-  "optionalDependencies": {
+  "devDependencies": {
+    "exiftool-vendored": "^35.20.0",
     "exiftool-vendored.exe": "13.58.0",
     "exiftool-vendored.pl": "13.58.0"
   }

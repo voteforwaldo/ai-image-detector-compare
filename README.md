@@ -11,7 +11,7 @@ Results appear side by side on one page.
 
 API keys must not live in public GitHub Pages JavaScript (anyone could steal them). Browsers also cannot call `api.aiornot.com` directly due to CORS. This repo includes:
 
-- **`server.mjs`** — local dev + simple self-host
+- **`dev-server.mjs`** — local dev + simple self-host (not used on Vercel; API routes live in `api/`)
 - **`api/analyze.js`** — Vercel serverless (free tier)
 
 The static UI is in `public/`.

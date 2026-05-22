@@ -1,10 +1,8 @@
 import { sendJson, withJson } from "../lib/api-util.mjs";
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const maxDuration = 60;
+
+const MAX_BODY_BYTES = Number(process.env.VERCEL_BODY_LIMIT) || 4 * 1024 * 1024;
 
 function parseMultipart(buffer, contentType) {
   const boundaryMatch = /boundary=(.+)$/i.exec(contentType || "");
@@ -46,7 +44,16 @@ function parseMultipart(buffer, contentType) {
 
 async function readRawBody(req) {
   const chunks = [];
+  let size = 0;
   for await (const chunk of req) {
+    size += chunk.length;
+    if (size > MAX_BODY_BYTES) {
+      const err = new Error(
+        `Файлът е твърде голям за Vercel (макс. ~${Math.round(MAX_BODY_BYTES / (1024 * 1024))} МБ). Намалете изображението.`
+      );
+      err.code = "payload_too_large";
+      throw err;
+    }
     chunks.push(chunk);
   }
   return Buffer.concat(chunks);
@@ -66,11 +73,32 @@ export default withJson(async (req, res) => {
     return;
   }
 
-  const body = await readRawBody(req);
-  const { fileBuffer, filename, mimeType, aiornotKey, geminiKey } = parseMultipart(
-    body,
-    req.headers["content-type"]
-  );
+  let body;
+  try {
+    body = await readRawBody(req);
+  } catch (err) {
+    const status = err?.code === "payload_too_large" ? 413 : 400;
+    sendJson(res, status, {
+      error: err?.message || "Невалидна заявка",
+      code: err?.code || "bad_request",
+    });
+    return;
+  }
+
+  let fileBuffer;
+  let filename;
+  let mimeType;
+  let aiornotKey;
+  let geminiKey;
+  try {
+    ({ fileBuffer, filename, mimeType, aiornotKey, geminiKey } = parseMultipart(
+      body,
+      req.headers["content-type"]
+    ));
+  } catch (err) {
+    sendJson(res, 400, { error: err?.message || "Невалидна заявка", code: "bad_request" });
+    return;
+  }
 
   const trimKey = (v) => String(v || "").trim().replace(/^["']|["']$/g, "");
   const keys = {

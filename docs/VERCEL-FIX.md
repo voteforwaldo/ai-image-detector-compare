@@ -40,6 +40,13 @@ In Vercel → **Settings** → **General** → **Node.js Version** → **20.x** 
 
 **Deployments** → latest → **⋯** → **Redeploy**
 
+### 5. `SERVICE_UNAVAILABLE` при качване
+
+- Обикновено **`/api/analyze` е паднал** (твърде голям файл, timeout или още не е deploy-нат последният fix).
+- На Vercel лимитът за тяло на заявката е **~4 МБ** — ползвайте по-малко изображение.
+- Уверете се, че **Node.js 20.x** е избран и последният commit е deploy-нат.
+- Проверка: `https://ВАШИЯТ-проект.vercel.app/api/health` → `{"ok":true}`.
+
 ---
 
 ## If you must import as JSON

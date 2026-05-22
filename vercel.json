@@ -1,9 +1,10 @@
-{
-  "version": 2,
-  "functions": {
-    "api/**/*.mjs": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
-  }
-}
+{
+  "version": 2,
+  "functions": {
+    "api/**/*.mjs": {
+      "maxDuration": 60,
+      "memory": 1024,
+      "excludeFiles": "{node_modules/exiftool-vendored/**,node_modules/exiftool-vendored.exe/**,node_modules/exiftool-vendored.pl/**}"
+    }
+  }
+}

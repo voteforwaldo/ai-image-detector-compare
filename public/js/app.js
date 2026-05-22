@@ -655,6 +655,17 @@ async function runAnalysis() {
     }
 
     if (!res.ok) {
+      if (res.status === 413 || data?.code === "payload_too_large") {
+        throw new Error(
+          data?.error ||
+            "Файлът е твърде голям за сървъра (обикновено до ~4 МБ на Vercel). Намалете изображението."
+        );
+      }
+      if (res.status === 503) {
+        throw new Error(
+          "Сървърът временно не отговори (SERVICE_UNAVAILABLE). Изчакайте минута и опитайте с по-малко изображение, или проверете последния Vercel deploy."
+        );
+      }
       throw new Error(data.error || `HTTP ${res.status}`);
     }
 
