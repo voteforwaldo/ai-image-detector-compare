@@ -1,5 +1,4 @@
-import { analyzeImage } from "../lib/analyze.mjs";
-import { isAuthenticated, authDeniedResponse } from "../lib/site-auth.mjs";
+import { sendJson, withJson } from "../lib/api-util.mjs";
 
 export const config = {
   api: {
@@ -53,45 +52,42 @@ async function readRawBody(req) {
   return Buffer.concat(chunks);
 }
 
-export default async function handler(req, res) {
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
+export default withJson(async (req, res) => {
+  if (req.method !== "POST") {
+    sendJson(res, 405, { error: "Методът не е позволен" });
     return;
   }
 
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Методът не е позволен" });
-    return;
-  }
+  const { isAuthenticated, authDeniedResponse } = await import("../lib/site-auth.mjs");
 
   if (!isAuthenticated(req.headers.cookie)) {
     const denied = authDeniedResponse();
-    res.status(denied.status).json(denied.body);
+    sendJson(res, denied.status, denied.body);
     return;
   }
 
-  try {
-    const body = await readRawBody(req);
-    const { fileBuffer, filename, mimeType, aiornotKey, geminiKey } = parseMultipart(
-      body,
-      req.headers["content-type"]
-    );
+  const body = await readRawBody(req);
+  const { fileBuffer, filename, mimeType, aiornotKey, geminiKey } = parseMultipart(
+    body,
+    req.headers["content-type"]
+  );
 
-    const keys = {
-      aiornotKey: aiornotKey || process.env.AIORNOT_API_KEY,
-      geminiKey: geminiKey || process.env.GEMINI_API_KEY,
-    };
+  const trimKey = (v) => String(v || "").trim().replace(/^["']|["']$/g, "");
+  const keys = {
+    aiornotKey: trimKey(aiornotKey || process.env.AIORNOT_API_KEY),
+    geminiKey: trimKey(geminiKey || process.env.GEMINI_API_KEY),
+  };
 
-    if (!keys.aiornotKey || !keys.geminiKey) {
-      res.status(400).json({
-        error: "Липсват API ключове. Задайте AIORNOT_API_KEY и GEMINI_API_KEY в Vercel или ги изпратете във формата.",
-      });
-      return;
-    }
-
-    const result = await analyzeImage(fileBuffer, filename, mimeType, keys);
-    res.status(200).json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message || "Анализът не успя" });
+  if (!keys.aiornotKey || !keys.geminiKey) {
+    sendJson(res, 400, {
+      error:
+        "Липсват API ключове. Задайте AIORNOT_API_KEY и GEMINI_API_KEY в Vercel.",
+      code: "missing_keys",
+    });
+    return;
   }
-}
+
+  const { analyzeImage } = await import("../lib/analyze.mjs");
+  const result = await analyzeImage(fileBuffer, filename, mimeType, keys);
+  sendJson(res, 200, result);
+});

@@ -51,6 +51,21 @@ function fetchOpts(extra = {}) {
   return { credentials: "include", ...extra };
 }
 
+async function safeJson(res) {
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    const preview = text.replace(/\s+/g, " ").slice(0, 120);
+    throw new Error(
+      preview.startsWith("<")
+        ? "Сървърът върна грешка (HTML). Проверете Vercel deployment и API маршрутите."
+        : `Невалиден отговор от сървъра: ${preview}`
+    );
+  }
+}
+
 function apiBase() {
   const meta = document.querySelector('meta[name="api-base"]');
   if (meta?.content) return meta.content.replace(/\/$/, "");
@@ -76,8 +91,8 @@ function showAuthGate() {
 
 async function initAuth() {
   try {
-    const res = await fetch(`${apiBase()}/api/auth/status`, fetchOpts());
-    const data = await res.json();
+    const res = await fetch(`${apiBase()}/api/auth-status`, fetchOpts());
+    const data = await safeJson(res);
     if (!data.required || data.authenticated) {
       showApp();
       return;
@@ -94,12 +109,12 @@ authForm.addEventListener("submit", async (e) => {
   authError.textContent = "";
 
   try {
-    const res = await fetch(`${apiBase()}/api/auth/login`, fetchOpts({
+    const res = await fetch(`${apiBase()}/api/auth-login`, fetchOpts({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: authPassword.value }),
     }));
-    const data = await res.json();
+    const data = await safeJson(res);
     if (!res.ok) {
       authError.textContent = data.error || "Грешна парола";
       authError.classList.remove("hidden");
@@ -399,7 +414,7 @@ async function runAnalysis() {
       body: form,
     }));
 
-    const data = await res.json();
+    const data = await safeJson(res);
     if (res.status === 401 && data.code === "auth_required") {
       showAuthGate();
       log("Нужен е вход с парола.", "error");

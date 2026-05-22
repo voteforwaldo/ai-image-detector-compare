@@ -243,13 +243,19 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "GET" && req.url === "/api/auth/status") {
+  if (req.method === "GET" && (req.url === "/api/auth-status" || req.url === "/api/auth/status")) {
     await handleAuthStatus(req, res);
     return;
   }
 
-  if (req.method === "POST" && req.url === "/api/auth/login") {
+  if (req.method === "POST" && (req.url === "/api/auth-login" || req.url === "/api/auth/login")) {
     await handleAuthLogin(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/api/health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
