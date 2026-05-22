@@ -8,10 +8,6 @@ const authForm = $("#auth-form");
 const authPassword = $("#auth-password");
 const authError = $("#auth-error");
 
-function fetchOpts(extra = {}) {
-  return { credentials: "include", ...extra };
-}
-
 const dropzone = $("#dropzone");
 const fileInput = $("#file-input");
 const previewWrap = $("#preview-wrap");
@@ -19,12 +15,26 @@ const previewImg = $("#preview-img");
 const dropzoneEmpty = $("#dropzone-empty");
 const terminal = $("#terminal");
 const resultsPanel = $("#results-panel");
-const layout = $(".layout");
+const layout = $("#main-layout");
 const btnUpload = $("#btn-upload");
 const btnClear = $("#btn-clear");
 const btnAnalyze = $("#btn-analyze");
+const btnMobileUpload = $("#btn-mobile-upload");
 const settingsDialog = $("#settings-dialog");
 const settingsForm = $("#settings-form");
+
+const summaryBanner = $("#summary-banner");
+const summaryAon = $("#summary-aon");
+const summaryGem = $("#summary-gem");
+const summaryMatch = $("#summary-match");
+const loadingPanel = $("#loading-panel");
+const resultsGrid = $("#results-grid");
+const exportActions = $("#export-actions");
+const btnCopyReport = $("#btn-copy-report");
+const btnPrintReport = $("#btn-print-report");
+const printReport = $("#print-report");
+const mobileBar = $("#mobile-bar");
+const toast = $("#toast");
 
 const VERDICT_LABELS = {
   ai: "ИИ",
@@ -34,11 +44,24 @@ const VERDICT_LABELS = {
 
 let selectedFile = null;
 let keys = { aiornot: "", gemini: "" };
+let lastResult = null;
+let previewObjectUrl = null;
+
+function fetchOpts(extra = {}) {
+  return { credentials: "include", ...extra };
+}
 
 function apiBase() {
   const meta = document.querySelector('meta[name="api-base"]');
   if (meta?.content) return meta.content.replace(/\/$/, "");
   return "";
+}
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.remove("hidden");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.add("hidden"), 2800);
 }
 
 function showApp() {
@@ -129,30 +152,89 @@ function verdictLabel(verdict) {
   return VERDICT_LABELS[verdict] || VERDICT_LABELS.uncertain;
 }
 
+function cardSnapshot(data) {
+  if (!data?.ok) {
+    return { label: "Грешка", pct: null, verdict: "error" };
+  }
+  const v = data.verdict || "uncertain";
+  const pct = Math.max(data.aiPercent ?? 0, data.humanPercent ?? 0);
+  return { label: verdictLabel(v), pct, verdict: v };
+}
+
+function compareVerdicts(a, b) {
+  if (a.verdict === "error" || b.verdict === "error") {
+    return { type: "partial", text: "⚠ Един източник не отговори" };
+  }
+  if (a.verdict === b.verdict) {
+    return { type: "agree", text: "✓ Вердиктите съвпадат" };
+  }
+  if (a.verdict === "uncertain" || b.verdict === "uncertain") {
+    return { type: "partial", text: "⚠ Частично съвпадение" };
+  }
+  return { type: "disagree", text: "⚠ Различни вердикти" };
+}
+
+function updateSummaryBanner(aiornot, gemini) {
+  const a = cardSnapshot(aiornot);
+  const g = cardSnapshot(gemini);
+
+  summaryAon.textContent = a.pct != null ? `${a.label} (${a.pct}%)` : a.label;
+  summaryGem.textContent = g.pct != null ? `${g.label} (${g.pct}%)` : g.label;
+
+  const match = compareVerdicts(a, g);
+  summaryMatch.textContent = match.text;
+  summaryMatch.className = `summary-match ${match.type}`;
+  summaryMatch.classList.remove("hidden");
+  summaryBanner.classList.remove("hidden");
+}
+
+function showLoading() {
+  summaryBanner.classList.add("hidden");
+  resultsGrid.classList.add("hidden");
+  exportActions.classList.add("hidden");
+  loadingPanel.classList.remove("hidden");
+}
+
+function hideLoading() {
+  loadingPanel.classList.add("hidden");
+  resultsGrid.classList.remove("hidden");
+  exportActions.classList.remove("hidden");
+}
+
 function setFile(file) {
   if (!file || !file.type.startsWith("image/")) {
     log("Моля, изберете файл с изображение.", "error");
+    showToast("Само файлове с изображения");
     return;
   }
+  if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
   selectedFile = file;
-  const url = URL.createObjectURL(file);
-  previewImg.src = url;
+  previewObjectUrl = URL.createObjectURL(file);
+  previewImg.src = previewObjectUrl;
   previewWrap.classList.remove("hidden");
   dropzoneEmpty.classList.add("hidden");
-  btnAnalyze.classList.remove("hidden");
-  btnAnalyze.disabled = false;
+  mobileBar.classList.remove("hidden");
   log(`Заредено: ${file.name} (${(file.size / 1024).toFixed(1)} КБ)`);
   runAnalysis();
 }
 
-function clearFile() {
+function resetUpload() {
+  if (previewObjectUrl) {
+    URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = null;
+  }
   selectedFile = null;
+  lastResult = null;
   previewImg.removeAttribute("src");
   previewWrap.classList.add("hidden");
   dropzoneEmpty.classList.remove("hidden");
-  btnAnalyze.classList.add("hidden");
   resultsPanel.classList.add("hidden");
   layout.classList.remove("has-results");
+  summaryBanner.classList.add("hidden");
+  mobileBar.classList.add("hidden");
+  fileInput.value = "";
+  clearTerminal();
+  log("Готов за ново качване.", "muted");
 }
 
 function updateCard(prefix, data) {
@@ -175,7 +257,7 @@ function updateCard(prefix, data) {
     summaryEl.textContent = "";
     errorEl.textContent = data.error || "Заявката не успя";
     errorEl.classList.remove("hidden");
-    return;
+    return null;
   }
 
   const v = data.verdict || "uncertain";
@@ -192,6 +274,7 @@ function updateCard(prefix, data) {
   aiBar.style.width = `${ai}%`;
   humanBar.style.width = `${human}%`;
   summaryEl.textContent = data.summary || "";
+  return data;
 }
 
 function updateAiornotGenerators(generators) {
@@ -212,15 +295,98 @@ function updateAiornotGenerators(generators) {
   }
 }
 
+function buildReportText() {
+  if (!lastResult) return "";
+  const { aiornot, gemini, fileName, at } = lastResult;
+  const a = cardSnapshot(aiornot);
+  const g = cardSnapshot(gemini);
+  const match = compareVerdicts(a, g);
+
+  let text = `ОТЧЕТ — ИИ инструмент (factcheck.bg)\n`;
+  text += `Дата: ${at}\n`;
+  text += `Файл: ${fileName}\n`;
+  text += `${match.text}\n\n`;
+  text += `--- AI or Not ---\n`;
+  if (aiornot?.ok) {
+    text += `Вердикт: ${verdictLabel(aiornot.verdict)} (${Math.max(aiornot.aiPercent, aiornot.humanPercent)}%)\n`;
+    text += `ИИ: ${aiornot.aiPercent}% | Човек: ${aiornot.humanPercent}%\n`;
+    text += `${aiornot.summary || ""}\n`;
+    if (aiornot.generators?.length) {
+      text += `Генератори: ${aiornot.generators.map((x) => `${x.name} ${x.confidence}%`).join(", ")}\n`;
+    }
+  } else {
+    text += `Грешка: ${aiornot?.error || "—"}\n`;
+  }
+  text += `\n--- Google Gemini ---\n`;
+  if (gemini?.ok) {
+    text += `Вердикт: ${verdictLabel(gemini.verdict)} (${gemini.confidencePercent ?? Math.max(gemini.aiPercent, gemini.humanPercent)}%)\n`;
+    text += `ИИ: ${gemini.aiPercent}% | Човек: ${gemini.humanPercent}%\n`;
+    text += `${gemini.summary || ""}\n`;
+  } else {
+    text += `Грешка: ${gemini?.error || "—"}\n`;
+  }
+  return text;
+}
+
+function buildPrintHtml() {
+  if (!lastResult) return "";
+  const { aiornot, gemini, fileName, at, previewSrc } = lastResult;
+  const a = cardSnapshot(aiornot);
+  const g = cardSnapshot(gemini);
+  const match = compareVerdicts(a, g);
+
+  const esc = (s) =>
+    String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  return `
+    <h1>ИИ инструмент — factcheck.bg</h1>
+    <p class="meta">${esc(at)} · ${esc(fileName)} · ${esc(match.text)}</p>
+    ${previewSrc ? `<img src="${previewSrc}" alt="Анализирано изображение" />` : ""}
+    <section>
+      <h2>AI or Not — ${esc(a.label)}${a.pct != null ? ` (${a.pct}%)` : ""}</h2>
+      <pre>${esc(aiornot?.ok ? aiornot.summary : aiornot?.error || "—")}</pre>
+    </section>
+    <section>
+      <h2>Google Gemini — ${esc(g.label)}${g.pct != null ? ` (${g.pct}%)` : ""}</h2>
+      <pre>${esc(gemini?.ok ? gemini.summary : gemini?.error || "—")}</pre>
+    </section>
+  `;
+}
+
+async function copyReport() {
+  const text = buildReportText();
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Отчетът е копиран");
+  } catch {
+    showToast("Копирането не успя");
+  }
+}
+
+function printReportPdf() {
+  if (!lastResult) return;
+  printReport.innerHTML = buildPrintHtml();
+  printReport.classList.remove("hidden");
+  window.print();
+  setTimeout(() => {
+    printReport.classList.add("hidden");
+    printReport.innerHTML = "";
+  }, 500);
+}
+
 async function runAnalysis() {
   if (!selectedFile) return;
 
   loadKeys();
   clearTerminal();
-  log("Качване към AI or Not и Gemini паралелно...");
+  log("Анализира се с AI or Not и Gemini...");
   resultsPanel.classList.remove("hidden");
   layout.classList.add("has-results");
-  btnAnalyze.disabled = true;
+  showLoading();
 
   const form = new FormData();
   form.append("image", selectedFile);
@@ -237,6 +403,7 @@ async function runAnalysis() {
     if (res.status === 401 && data.code === "auth_required") {
       showAuthGate();
       log("Нужен е вход с парола.", "error");
+      hideLoading();
       return;
     }
 
@@ -244,46 +411,81 @@ async function runAnalysis() {
       throw new Error(data.error || `HTTP ${res.status}`);
     }
 
+    hideLoading();
     updateCard("aon", data.aiornot);
     updateCard("gem", data.gemini);
+    updateSummaryBanner(data.aiornot, data.gemini);
+
+    lastResult = {
+      aiornot: data.aiornot,
+      gemini: data.gemini,
+      fileName: selectedFile.name,
+      at: new Date().toLocaleString("bg-BG"),
+      previewSrc: previewImg.src,
+    };
 
     if (data.aiornot?.ok) {
       updateAiornotGenerators(data.aiornot.generators);
-      log(
-        `AI or Not: ${verdictLabel(data.aiornot.verdict)} (${data.aiornot.aiPercent}% ИИ)`
-      );
+      log(`AI or Not: ${verdictLabel(data.aiornot.verdict)} (${data.aiornot.aiPercent}% ИИ)`);
     } else {
       log(`AI or Not — грешка: ${data.aiornot?.error}`, "error");
     }
 
     if (data.gemini?.ok) {
       log(
-        `Gemini: ${verdictLabel(data.gemini.verdict)} (${data.gemini.confidencePercent ?? data.gemini.aiPercent}% сигурност)`
+        `Gemini: ${verdictLabel(data.gemini.verdict)} (${data.gemini.confidencePercent ?? data.gemini.aiPercent}%)`
       );
     } else {
       log(`Gemini — грешка: ${data.gemini?.error}`, "error");
     }
 
-    log("Анализът приключи.");
+    log("Готово.");
   } catch (err) {
+    hideLoading();
     log(err.message || "Анализът не успя", "error");
-  } finally {
-    btnAnalyze.disabled = false;
+    showToast("Анализът не успя");
   }
 }
 
-btnUpload.addEventListener("click", () => fileInput.click());
+dropzone.addEventListener("click", (e) => {
+  if (e.target.closest("button")) return;
+  if (!dropzoneEmpty.classList.contains("hidden")) fileInput.click();
+});
+
+btnUpload.addEventListener("click", (e) => {
+  e.stopPropagation();
+  fileInput.click();
+});
+
+btnMobileUpload.addEventListener("click", () => {
+  resetUpload();
+  fileInput.click();
+});
+
 fileInput.addEventListener("change", () => {
   if (fileInput.files[0]) setFile(fileInput.files[0]);
 });
-btnClear.addEventListener("click", clearFile);
-btnAnalyze.addEventListener("click", runAnalysis);
+
+btnClear.addEventListener("click", (e) => {
+  e.stopPropagation();
+  resetUpload();
+});
+
+btnAnalyze.addEventListener("click", (e) => {
+  e.stopPropagation();
+  runAnalysis();
+});
+
+btnCopyReport.addEventListener("click", copyReport);
+btnPrintReport.addEventListener("click", printReportPdf);
 
 dropzone.addEventListener("dragover", (e) => {
   e.preventDefault();
   dropzone.classList.add("dragover");
 });
+
 dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+
 dropzone.addEventListener("drop", (e) => {
   e.preventDefault();
   dropzone.classList.remove("dragover");
@@ -304,7 +506,7 @@ settingsForm.addEventListener("submit", (e) => {
   keys.gemini = $("#input-gemini").value.trim();
   saveKeys();
   settingsDialog.close();
-  log("API ключовете са запазени за тази сесия.");
+  showToast("Ключовете са запазени");
 });
 
 initAuth().then(() => loadKeys());
