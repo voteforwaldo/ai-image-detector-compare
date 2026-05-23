@@ -1,30 +1,34 @@
-import { jsonResponse, methodNotAllowed, optionsResponse } from "../lib/api-helpers.mjs";
+import { readJsonBody, sendJson, withJson } from "../lib/api-util.mjs";
 import {
   isAuthRequired,
   verifyPassword,
   buildSessionCookie,
 } from "../lib/site-auth.mjs";
 
-export default async function handler(request) {
-  if (request.method === "OPTIONS") return optionsResponse();
-  if (request.method !== "POST") return methodNotAllowed();
+export default withJson(async (req, res) => {
+  if (req.method !== "POST") {
+    sendJson(res, 405, { error: "Методът не е позволен" });
+    return;
+  }
 
   if (!isAuthRequired()) {
-    return jsonResponse({ ok: true, required: false });
+    sendJson(res, 200, { ok: true, required: false });
+    return;
   }
 
   let body = {};
   try {
-    body = await request.json();
+    body = await readJsonBody(req);
   } catch {
-    return jsonResponse({ error: "Невалиден JSON в заявката" }, 400);
+    sendJson(res, 400, { error: "Невалиден JSON в заявката" });
+    return;
   }
 
   if (!verifyPassword(body.password)) {
-    return jsonResponse({ error: "Грешна парола" }, 401);
+    sendJson(res, 401, { error: "Грешна парола" });
+    return;
   }
 
-  return jsonResponse({ ok: true, required: true }, 200, {
-    "Set-Cookie": buildSessionCookie(),
-  });
-}
+  res.setHeader("Set-Cookie", buildSessionCookie());
+  sendJson(res, 200, { ok: true, required: true });
+});

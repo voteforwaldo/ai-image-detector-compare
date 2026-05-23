@@ -1,12 +1,14 @@
-import { jsonResponse, methodNotAllowed, optionsResponse } from "../lib/api-helpers.mjs";
+import { sendJson, withJson } from "../lib/api-util.mjs";
 import { isAuthRequired, isAuthenticated } from "../lib/site-auth.mjs";
 
-export default async function handler(request) {
-  if (request.method === "OPTIONS") return optionsResponse();
-  if (request.method !== "GET") return methodNotAllowed();
+export default withJson(async (req, res) => {
+  if (req.method !== "GET") {
+    sendJson(res, 405, { error: "Методът не е позволен" });
+    return;
+  }
 
-  return jsonResponse({
+  sendJson(res, 200, {
     required: isAuthRequired(),
-    authenticated: isAuthenticated(request.headers.get("cookie") || ""),
+    authenticated: isAuthenticated(req.headers.cookie),
   });
-}
+});

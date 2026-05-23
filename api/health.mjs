@@ -1,7 +1,9 @@
-import { jsonResponse, methodNotAllowed, optionsResponse } from "../lib/api-helpers.mjs";
+import { sendJson, withJson } from "../lib/api-util.mjs";
 
-export default async function handler(request) {
-  if (request.method === "OPTIONS") return optionsResponse();
-  if (request.method !== "GET") return methodNotAllowed();
-  return jsonResponse({ ok: true, service: "ai-image-detector" });
-}
+export default withJson(async (req, res) => {
+  if (req.method !== "GET") {
+    sendJson(res, 405, { error: "Методът не е позволен" });
+    return;
+  }
+  sendJson(res, 200, { ok: true, service: "ai-image-detector" });
+});
