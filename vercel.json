@@ -2,10 +2,9 @@
   "version": 2,
   "installCommand": "npm install --omit=dev",
   "functions": {
-    "api/**/*.mjs": {
-      "maxDuration": 60,
-      "memory": 1024,
-      "excludeFiles": "{node_modules/exiftool-vendored/**,node_modules/exiftool-vendored.exe/**,node_modules/exiftool-vendored.pl/**}"
+    "server.mjs": {
+      "maxDuration": 300,
+      "memory": 1024
     }
   }
 }

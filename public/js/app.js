@@ -95,9 +95,14 @@ async function safeJson(res) {
     return JSON.parse(text);
   } catch {
     const preview = text.replace(/\s+/g, " ").slice(0, 120);
+    if (preview.includes("SERVICE_UNAVAILABLE") || preview.includes("deployment is currently unavailable")) {
+      throw new Error(
+        "Сървърът временно не отговори. Изчакайте минута, намалете файла (до 4 МБ) и опитайте отново."
+      );
+    }
     throw new Error(
       preview.startsWith("<")
-        ? "Сървърът върна грешка (HTML). Проверете Vercel deployment и API маршрутите."
+        ? "Сървърът върна грешка (HTML). Проверете Vercel deployment."
         : `Невалиден отговор от сървъра: ${preview}`
     );
   }
@@ -393,10 +398,17 @@ function dataUrlToFile(dataUrl) {
   return new File([bytes], `clipboard-${Date.now()}.${ext}`, { type: mime });
 }
 
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
 function setFile(file) {
   if (!file || !file.type.startsWith("image/")) {
     log("Моля, изберете файл с изображение.", "error");
     showToast("Само файлове с изображения");
+    return;
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    log("Файлът е над 4 МБ. Намалете изображението преди качване.", "error");
+    showToast("Максимум 4 МБ");
     return;
   }
   if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);

@@ -14,9 +14,20 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, "public");
+export const maxDuration = 300;
+
+const ON_VERCEL = process.env.VERCEL === "1";
 const PORT = Number(String(process.env.PORT || 3000).trim()) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
-const MAX_BYTES = 50 * 1024 * 1024;
+const MAX_BYTES = ON_VERCEL ? 4 * 1024 * 1024 : 50 * 1024 * 1024;
+
+function requestPath(req) {
+  try {
+    return new URL(req.url || "/", `http://${req.headers.host || "localhost"}`).pathname;
+  } catch {
+    return (req.url || "/").split("?")[0];
+  }
+}
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -93,7 +104,8 @@ function readBody(req) {
     req.on("data", (chunk) => {
       size += chunk.length;
       if (size > MAX_BYTES) {
-        reject(new Error("Файлът е твърде голям (макс. 50 МБ)"));
+        const mb = Math.round(MAX_BYTES / (1024 * 1024));
+        reject(new Error(`Файлът е твърде голям (макс. ${mb} МБ)`));
         req.destroy();
         return;
       }
@@ -247,48 +259,63 @@ function serveStatic(req, res) {
 }
 
 const server = http.createServer(async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  try {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
-    return;
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const path = requestPath(req);
+
+    if (req.method === "GET" && (path === "/api/auth-status" || path === "/api/auth/status")) {
+      await handleAuthStatus(req, res);
+      return;
+    }
+
+    if (req.method === "POST" && (path === "/api/auth-login" || path === "/api/auth/login")) {
+      await handleAuthLogin(req, res);
+      return;
+    }
+
+    if (req.method === "GET" && path === "/api/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, service: "ai-image-detector" }));
+      return;
+    }
+
+    if (req.method === "POST" && path === "/api/analyze") {
+      await handleAnalyze(req, res);
+      return;
+    }
+
+    if (req.method === "GET") {
+      serveStatic(req, res);
+      return;
+    }
+
+    res.writeHead(405, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Методът не е позволен" }));
+  } catch (err) {
+    console.error("Request handler error:", err);
+    if (!res.headersSent) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          error: err?.message || "Вътрешна грешка на сървъра",
+          code: "server_error",
+        })
+      );
+    }
   }
-
-  if (req.method === "GET" && (req.url === "/api/auth-status" || req.url === "/api/auth/status")) {
-    await handleAuthStatus(req, res);
-    return;
-  }
-
-  if (req.method === "POST" && (req.url === "/api/auth-login" || req.url === "/api/auth/login")) {
-    await handleAuthLogin(req, res);
-    return;
-  }
-
-  if (req.method === "GET" && req.url === "/api/health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true }));
-    return;
-  }
-
-  if (req.method === "POST" && req.url === "/api/analyze") {
-    await handleAnalyze(req, res);
-    return;
-  }
-
-  if (req.method === "GET") {
-    serveStatic(req, res);
-    return;
-  }
-
-  res.writeHead(405);
-  res.end("Методът не е позволен");
 });
 
 function openBrowser(url) {
-  if (process.env.OPEN_BROWSER === "0") return;
+  if (ON_VERCEL || process.env.OPEN_BROWSER === "0") return;
   const onFail = () => console.log(`Отворете в браузъра: ${url}`);
 
   if (process.platform === "win32") {
