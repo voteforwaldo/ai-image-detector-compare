@@ -2,7 +2,7 @@
   "version": 2,
   "installCommand": "npm install --omit=dev",
   "functions": {
-    "server.mjs": {
+    "api/**/*.mjs": {
       "maxDuration": 300,
       "memory": 1024
     }

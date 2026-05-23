@@ -32,9 +32,11 @@ SITE_PASSWORD=TheSecret123
 
 (JSON needs quotes: `"value": "TheSecret123"`)
 
-### 3. Node.js version
+### 3. Node.js version и Framework
 
-In Vercel → **Settings** → **General** → **Node.js Version** → **20.x** (задължително за ExifTool).
+In Vercel → **Settings** → **General**:
+- **Node.js Version** → **20.x**
+- **Framework Preset** → **Other** (не „Node.js Server“ — API е в `api/`, статиката в `public/`)
 
 ### 4. Redeploy
 

@@ -4,8 +4,8 @@
   "description": "Compare AI or Not API vs Google Gemini on the same uploaded image",
   "type": "module",
   "scripts": {
-    "start": "node server.mjs",
-    "dev": "node --watch server.mjs"
+    "start": "node dev-server.mjs",
+    "dev": "node --watch dev-server.mjs"
   },
   "engines": {
     "node": "20.x"

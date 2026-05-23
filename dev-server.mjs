@@ -14,8 +14,6 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, "public");
-export const maxDuration = 300;
-
 const ON_VERCEL = process.env.VERCEL === "1";
 const PORT = Number(String(process.env.PORT || 3000).trim()) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
