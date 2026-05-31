@@ -28,5 +28,10 @@ const r2 = parseGeminiResponse(jsonHumanSummaryAiVerdict);
 assert(r2.verdict === "human", `json ai+human summary → human, got ${r2.verdict}`);
 assert(/автентичн|естествена|Forensic/i.test(r2.summary), `summary aligned: ${r2.summary}`);
 
+const googleLogoCase = `{"verdict":"human","confidence_percent":90,"platform_logo":"gemini","summary":"Липсват AI артефакти и watermarks.","focus_regions":[]}`;
+const r3 = parseGeminiResponse(googleLogoCase);
+assert(r3.verdict === "ai", `platform_logo gemini → ai, got ${r3.verdict}`);
+assert(r3.confidence_percent >= 95, `expected high AI conf, got ${r3.confidence_percent}`);
+
 console.log("OK — Gemini parse/reconcile tests passed");
 console.log("  userCase:", r1.verdict, r1.confidence_percent + "%", "→", r1.summary.slice(0, 80) + "...");
