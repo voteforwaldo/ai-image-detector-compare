@@ -19,7 +19,7 @@ Use the normal form: **Key** + **Value** fields.
 |-----|--------|
 | `AIORNOT_API_KEY` | your key (no quotes) |
 | `GEMINI_API_KEY` | your key (no quotes) |
-| `GEMINI_MODEL` | `gemini-3.5-flash` (optional) |
+| `GEMINI_MODEL` | `gemini-2.5-pro` (optional; flash = по-бърз) |
 | `SITE_PASSWORD` | your password (**задължително** за вход с парола; без нея сайтът е отворен) |
 
 For each variable, tick **Production** (and Preview if you want).

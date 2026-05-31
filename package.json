@@ -1,6 +1,6 @@
 {
   "name": "ai-image-detector-compare",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Compare AI or Not API vs Google Gemini on the same uploaded image",
   "type": "module",
   "scripts": {

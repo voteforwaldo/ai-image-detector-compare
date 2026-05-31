@@ -3,7 +3,7 @@
 A small web tool styled like [AI or Not](https://aiornot.com) that analyzes the same uploaded image **in parallel** with:
 
 1. **AI or Not API** — official `ai_generated` report (verdict + AI/human confidence %)
-2. **Google Gemini** — vision model with an “is it AI?” prompt
+2. **Google Gemini** — vision forensic анализ (вкл. SynthID/C2PA контекст в prompt-а)
 
 Results appear side by side on one page.
 
@@ -11,9 +11,8 @@ Results appear side by side on one page.
 
 API keys must not live in public GitHub Pages JavaScript (anyone could steal them). Browsers also cannot call `api.aiornot.com` directly due to CORS. This repo includes:
 
-- **`server.mjs`** — Vercel handler (`export default`, без `listen()`)
+- **`server.mjs`** — Vercel entrypoint (`export default`, catch-all via `vercel.json` rewrites)
 - **`dev-server.mjs`** — локален старт (`node dev-server.mjs` / `start-local.bat`)
-- **`api/analyze.js`** — Vercel serverless (free tier)
 
 The static UI is in `public/`.
 
@@ -40,7 +39,9 @@ Alternatively, open **Settings** and paste keys (stored in `sessionStorage` only
 3. Add environment variables:
    - `AIORNOT_API_KEY`
    - `GEMINI_API_KEY`
-4. Deploy. Vercel serves both the UI (`public/`) and `/api/analyze`.
+   - `GEMINI_MODEL` — optional, default `gemini-2.5-pro`
+   - `SITE_PASSWORD` — optional site gate
+4. Deploy. Vercel serves UI + `/api/*` through `server.mjs`.
 
 No keys in the browser required when env vars are set on Vercel.
 
@@ -57,7 +58,7 @@ Then use a GitHub Actions workflow or the Pages setting with `/public` as the so
 ## API references
 
 - AI or Not: https://docs.aiornot.com/ — image endpoint `POST https://api.aiornot.com/v2/image/sync?only=ai_generated`
-- Gemini: https://ai.google.dev/gemini-api/docs — model `gemini-2.5-flash`
+- Gemini: https://ai.google.dev/gemini-api/docs — default model `gemini-2.5-pro`; prompt covers SynthID/C2PA provenance context
 
 ## Security
 

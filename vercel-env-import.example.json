@@ -11,7 +11,7 @@
   },
   {
     "key": "GEMINI_MODEL",
-    "value": "gemini-3.5-flash",
+    "value": "gemini-2.5-pro",
     "target": ["production", "preview", "development"]
   },
   {

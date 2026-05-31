@@ -1,4 +1,6 @@
 const KEYWORD_REGIONS = [
+  { re: /synthid|synth\s*id|c2pa|content\s*credentials|imagen|provenance/i, label: "SynthID/C2PA", note: "Проверете provenance — SynthID (Google) или C2PA Content Credentials.", x: 0.02, y: 0.02, w: 0.96, h: 0.96, severity: "warn" },
+  { re: /лого|watermark|воден\s*знак|badge|ui|прозорец|chat|gemini|chatgpt|google\s*ai/i, label: "AI UI/лого", note: "Проверете за лого, watermark или UI на AI инструмент.", x: 0.02, y: 0.02, w: 0.96, h: 0.96, severity: "warn" },
   { re: /пръст|ръц|длан|анатом/i, label: "Ръце", note: "Проверете анатомията на ръцете и пръстите.", x: 0.32, y: 0.52, w: 0.36, h: 0.28 },
   { re: /очи|лиц|зъб|коса|кожа/i, label: "Лице", note: "Прегледайте лице, очи и детайли на кожата.", x: 0.28, y: 0.08, w: 0.44, h: 0.38 },
   { re: /текст|надпис|букв|символ/i, label: "Текст", note: "Проверете надписи и четимост на текст.", x: 0.08, y: 0.04, w: 0.84, h: 0.22 },
