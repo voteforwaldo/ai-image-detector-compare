@@ -62,70 +62,33 @@ function compareAiVerdicts(a, b) {
 
 
 
-function exifSignal(exiftool) {
-  if (!exiftool?.ok) return { level: "error", short: "—", verdict: "error" };
-  if (!exiftool.hasAiMarkers) {
-    return { level: "ok", short: "Без ИИ маркери", verdict: "ok", hideInSummary: true };
-  }
-  const aiWarns = (exiftool.highlights || []).filter((h) => h.aiMarker).length;
-  return {
-    level: "warn",
-    short: aiWarns > 1 ? `${aiWarns} ИИ сигнала` : "ИИ в метаданни",
-    verdict: "warn",
-  };
-}
-
-
-
-function overallHeadline(aiMatch, gemini, exif) {
-
+function overallHeadline(aiMatch, gemini) {
   const g = cardSnapshot(gemini);
 
-  const ex = exifSignal(exif);
-
-
-
   if (aiMatch.type === "disagree") {
-
     return "Нужна е ръчна проверка — детекторите не съвпадат";
-
-  }
-
-  if (g.verdict === "ai" && ex.level === "warn" && exif?.hasAiMarkers) {
-    return "Силни сигнали за ИИ — детектор + метаданни";
   }
 
   if (g.verdict === "ai" || (aiMatch.type === "agree" && g.verdict === "ai")) {
-
     return "Вероятно изображение, генерирано или обработено с ИИ";
-
   }
 
-  if (g.verdict === "human" && ex.level === "ok") {
-
+  if (g.verdict === "human" && aiMatch.type === "agree") {
     return "Няма силни сигнали за ИИ в автоматичната проверка";
-
   }
 
   if (g.verdict === "uncertain") {
-
     return "Неясно — препоръчва се допълнителна проверка";
-
   }
 
   return "Прегледайте отчета и маркираните зони";
-
 }
 
 
 
-function buildBullets({ aiornot, gemini, exiftool, focusRegions, aiMatch }) {
-
+function buildBullets({ aiornot, gemini, focusRegions, aiMatch }) {
   const bullets = [];
-
   const g = cardSnapshot(gemini);
-
-  const ex = exifSignal(exiftool);
 
 
 
@@ -158,26 +121,6 @@ function buildBullets({ aiornot, gemini, exiftool, focusRegions, aiMatch }) {
     bullets.push(
 
       `На снимката са маркирани ${focusRegions.length} зони за внимание — посочете ги при обсъждане с екипа.`
-
-    );
-
-  }
-
-
-
-  for (const h of exiftool?.highlights || []) {
-    if (h.aiMarker && bullets.length < 5) {
-      bullets.push(h.text);
-    }
-  }
-
-
-
-  if (ex.level === "neutral" && bullets.length < 5) {
-
-    bullets.push(
-
-      "Метаданните са изчистени или оскъдни — не разчитайте само на EXIF; проверете източника на файла."
 
     );
 
@@ -227,89 +170,34 @@ export function buildFactcheckReport({ aiornot, gemini, exiftool, fileName, at, 
 
   const g = cardSnapshot(gemini);
 
-  const ex = exifSignal(exiftool);
-
   const aiMatch = compareAiVerdicts(a, g);
 
-
-
   const rows = [
-
     {
-
       source: "AI or Not",
-
       verdict: a.label,
-
       detail: a.pct != null ? `${a.pct}% сигурност` : "—",
-
       tone: a.verdict,
-
     },
-
     {
-
       source: "Google Gemini",
-
       verdict: g.label,
-
       detail: g.pct != null ? `${g.pct}% сигурност` : "—",
-
       tone: g.verdict,
-
     },
-
-    ...(exiftool?.ok && exiftool.hasAiMarkers
-      ? [
-          {
-            source: "ExifTool",
-            verdict: ex.short,
-            detail: (exiftool.summary || "").slice(0, 80),
-            tone: ex.verdict,
-          },
-        ]
-      : exiftool?.ok
-        ? []
-        : [
-            {
-              source: "ExifTool",
-              verdict: ex.short,
-              detail: exiftool?.error || "Грешка",
-              tone: "error",
-            },
-          ]),
   ];
 
-
-
-  let conclusion = aiMatch.text;
-
-  if (exiftool?.hasAiMarkers) {
-    conclusion += ". Метаданните съдържат сигнали за ИИ (софтуер, C2PA или генеративни параметри).";
-  } else if (exiftool?.ok && aiMatch.type === "agree" && g.verdict === "human") {
-    conclusion += ". Метаданните не показват ИИ маркери в проверените полета.";
-  }
-
-
+  const conclusion = aiMatch.text;
 
   return {
-
-    headline: overallHeadline(aiMatch, gemini, exiftool),
-
+    headline: overallHeadline(aiMatch, gemini),
     meta: `${fileName || "—"} · ${at || ""}`,
-
     badge: aiMatch,
-
     rows,
-
     conclusion,
-
-    bullets: buildBullets({ aiornot, gemini, exiftool, focusRegions, aiMatch }),
-
+    bullets: buildBullets({ aiornot, gemini, focusRegions, aiMatch }),
     aiMatch,
-
   };
-
 }
 
 
