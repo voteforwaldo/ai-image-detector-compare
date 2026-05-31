@@ -39,7 +39,7 @@ Alternatively, open **Settings** and paste keys (stored in `sessionStorage` only
 3. Add environment variables:
    - `AIORNOT_API_KEY`
    - `GEMINI_API_KEY`
-   - `GEMINI_MODEL` — optional, default `gemini-2.5-pro`
+   - `GEMINI_MODEL` — optional, default `gemini-3.5-flash`
    - `SITE_PASSWORD` — optional site gate
 4. Deploy. Vercel serves UI + `/api/*` through `server.mjs`.
 
@@ -58,7 +58,7 @@ Then use a GitHub Actions workflow or the Pages setting with `/public` as the so
 ## API references
 
 - AI or Not: https://docs.aiornot.com/ — image endpoint `POST https://api.aiornot.com/v2/image/sync?only=ai_generated`
-- Gemini: https://ai.google.dev/gemini-api/docs — default model `gemini-2.5-pro`; prompt covers SynthID/C2PA provenance context
+- Gemini: https://ai.google.dev/gemini-api/docs — default model `gemini-3.5-flash`
 
 ## Security
 
