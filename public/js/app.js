@@ -1,4 +1,8 @@
-import { buildFactcheckReport, reportToPlainText } from "./factcheck-report.js";
+import {
+  buildFactcheckReport,
+  editorialToPlainText,
+  reportToPlainText,
+} from "./factcheck-report.js";
 import { resolveFocusRegions } from "./focus-regions.js";
 
 const STORAGE_KEYS = "aidetector_keys";
@@ -58,6 +62,10 @@ const exifError = $("#exif-error");
 const exportActions = $("#export-actions");
 const btnCopyReport = $("#btn-copy-report");
 const btnPrintReport = $("#btn-print-report");
+const fcEditorial = $("#fc-editorial");
+const fcEditorialText = $("#fc-editorial-text");
+const btnCopyEditorial = $("#btn-copy-editorial");
+const btnPdfEditorial = $("#btn-pdf-editorial");
 const printReport = $("#print-report");
 const mobileBar = $("#mobile-bar");
 const toast = $("#toast");
@@ -282,6 +290,15 @@ function renderFactcheckReport(report) {
     .join("");
 
   fcReportBullets.innerHTML = report.bullets.map((b) => `<li>${escHtml(b)}</li>`).join("");
+
+  if (fcEditorial && fcEditorialText && report.editorial?.text) {
+    fcEditorialText.textContent = report.editorial.text;
+    fcEditorial.classList.remove("hidden");
+  } else if (fcEditorial) {
+    fcEditorial.classList.add("hidden");
+    if (fcEditorialText) fcEditorialText.textContent = "";
+  }
+
   fcReport.classList.remove("hidden");
 }
 
@@ -383,6 +400,7 @@ function showLoading() {
   updateStep(2);
   hideAnalyzeError();
   fcReport.classList.add("hidden");
+  fcEditorial?.classList.add("hidden");
   resultsGrid.classList.add("hidden");
   exifPanel.classList.add("hidden");
   synthidPanel?.classList.add("hidden");
@@ -502,6 +520,8 @@ function resetUpload() {
   resultsPanel.classList.add("hidden");
   layout.classList.remove("has-results");
   fcReport.classList.add("hidden");
+  fcEditorial?.classList.add("hidden");
+  if (fcEditorialText) fcEditorialText.textContent = "";
   hideAnalyzeError();
   mobileBar.classList.add("hidden");
   fileInput.value = "";
@@ -633,6 +653,68 @@ function buildReportText() {
   if (synthid?.ok && synthid.detected) text += `Synth ID: Открит — ${synthid.summary || ""}\n`;
   if (exiftool?.ok) text += `ExifTool: ${exiftool.summary || ""}\n`;
   return text;
+}
+
+function buildEditorialPrintHtml() {
+  if (!lastResult || !lastReport?.editorial) return "";
+  const { previewSrc } = lastResult;
+  const rows = lastReport.rows
+    .map((r) => {
+      if (r.noRating) {
+        return `<tr><td>${escHtml(r.source)}</td><td colspan="2">${escHtml(r.verdict)}</td></tr>`;
+      }
+      return `<tr><td>${escHtml(r.source)}</td><td>${escHtml(r.verdict)}</td><td>${escHtml(r.detail)}</td></tr>`;
+    })
+    .join("");
+
+  return `
+    <header class="print-editorial-header">
+      <img class="print-logo" src="img/factcheck-logo.png" alt="factcheck.bg" width="160" height="42" />
+      <p class="print-kicker">ИИ инструмент · Текст за редакция</p>
+    </header>
+    <p class="meta">${escHtml(lastReport.meta)}</p>
+    <h2>${escHtml(lastReport.headline)}</h2>
+    <section class="print-editorial-body">
+      <p class="print-editorial-lead">${escHtml(lastReport.editorial.text)}</p>
+    </section>
+    ${previewSrc ? `<img src="${previewSrc}" alt="Анализирано изображение" />` : ""}
+    <table class="fc-report-table print-summary-table">
+      <thead><tr><th>Източник</th><th>Резултат</th><th>Детайл</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <footer class="print-footer">
+      <p>Генерирано от factcheck.bg · ${escHtml(lastResult.at || new Date().toLocaleString("bg-BG"))}</p>
+      <p>Автоматична проверка — не замества журналистическа оценка.</p>
+    </footer>
+  `;
+}
+
+async function copyEditorial() {
+  if (!lastReport?.editorial) return;
+  const text = editorialToPlainText({
+    editorial: lastReport.editorial,
+    fileName: lastResult?.fileName,
+    at: lastResult?.at,
+  });
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Текстът за редакция е копиран");
+  } catch {
+    showToast("Копирането не успя");
+  }
+}
+
+function printEditorialPdf() {
+  if (!lastReport?.editorial) return;
+  printReport.innerHTML = buildEditorialPrintHtml();
+  printReport.classList.remove("hidden");
+  printReport.setAttribute("data-print-mode", "editorial");
+  window.print();
+  setTimeout(() => {
+    printReport.classList.add("hidden");
+    printReport.removeAttribute("data-print-mode");
+    printReport.innerHTML = "";
+  }, 500);
 }
 
 function buildPrintHtml() {
@@ -867,6 +949,8 @@ btnAnalyze.addEventListener("click", (e) => {
 
 btnCopyReport.addEventListener("click", copyReport);
 btnPrintReport.addEventListener("click", printReportPdf);
+btnCopyEditorial?.addEventListener("click", copyEditorial);
+btnPdfEditorial?.addEventListener("click", printEditorialPdf);
 
 dropzone.addEventListener("dragover", (e) => {
   e.preventDefault();
