@@ -1,11 +1,10 @@
 {
   "version": 2,
-  "installCommand": "npm install --omit=dev",
+  "installCommand": "rm -rf node_modules && npm ci --omit=dev",
   "functions": {
     "server.mjs": {
       "maxDuration": 300,
-      "memory": 1024,
-      "includeFiles": "{public/**,lib/data/**}"
+      "includeFiles": "{public/**,lib/**,node_modules/sharp/**,node_modules/@img/**}"
     }
   },
   "rewrites": [
