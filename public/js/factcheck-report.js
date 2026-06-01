@@ -160,108 +160,6 @@ function buildBullets({ aiornot, gemini, synthid, focusRegions, aiMatch }) {
 
 }
 
-function detectorPhrase(name, snap, data) {
-  if (!data?.ok) return `${name} не отговори`;
-  const pct = snap.pct != null ? ` (${snap.pct}%)` : "";
-  return `${name} — ${snap.label}${pct}`;
-}
-
-/**
- * 2–4 изречения на български за копиране в редакция / PDF.
- */
-export function buildEditorialVerdict({ aiornot, gemini, exiftool, synthid, fileName, at }) {
-  const a = cardSnapshot(aiornot);
-  const g = cardSnapshot(gemini);
-  const aiMatch = compareAiVerdicts(a, g);
-  const sentences = [];
-
-  const label = fileName ? `„${fileName}"` : "каченото изображение";
-  const stamp = at ? ` на ${at}` : "";
-  sentences.push(`Проверка на ${label}${stamp} с инструментите на factcheck.bg.`);
-
-  if (a.verdict === "error" || g.verdict === "error") {
-    sentences.push(
-      `Част от автоматичните детектори не върнаха резултат (${detectorPhrase("AI or Not", a, aiornot)}; ${detectorPhrase("Gemini", g, gemini)}).`
-    );
-  } else if (aiMatch.type === "disagree") {
-    sentences.push(
-      `Детекторите не съвпадат: ${detectorPhrase("AI or Not", a, aiornot)}, а ${detectorPhrase("Google Gemini", g, gemini)} — необходим е ръчен преглед преди публикация.`
-    );
-  } else if (aiMatch.type === "agree" && g.verdict === "ai") {
-    sentences.push(
-      `И двата основни детектора оценяват изображението като ИИ: ${detectorPhrase("AI or Not", a, aiornot)} и ${detectorPhrase("Google Gemini", g, gemini)}.`
-    );
-  } else if (aiMatch.type === "agree" && g.verdict === "human") {
-    sentences.push(
-      `И двата детектора не откриват силен ИИ сигнал: ${detectorPhrase("AI or Not", a, aiornot)} и ${detectorPhrase("Google Gemini", g, gemini)}.`
-    );
-  } else {
-    sentences.push(
-      `${detectorPhrase("AI or Not", a, aiornot)}. ${detectorPhrase("Google Gemini", g, gemini)}.`
-    );
-  }
-
-  if (synthid?.ok && synthid.detected) {
-    sentences.push(
-      "Спектралният анализ откри Synth ID — технически индикатор за невидим Google watermark в пикселите."
-    );
-  }
-
-  if (exiftool?.ok) {
-    if (exiftool.hasC2paProvenance) {
-      sentences.push(
-        "В метаданните има C2PA / Content Credentials — силен цифров сигнал за алгоритмичен или синтетичен произход."
-      );
-    } else if (exiftool.hasAiMarkers) {
-      sentences.push(
-        "Метаданните (ExifTool) съдържат маркери, свързани с ИИ, provenance или digital watermark."
-      );
-    } else if ((exiftool.allFields?.length ?? exiftool.tagCount ?? 0) < 8) {
-      sentences.push(
-        "Вградените метаданни са оскъдни или липсват — често след споделяне онлайн; това не доказва произхода."
-      );
-    }
-  }
-
-  const needsCaution =
-    aiMatch.type === "disagree" ||
-    g.verdict === "uncertain" ||
-    a.verdict === "uncertain" ||
-    (synthid?.ok && synthid.detected);
-
-  if (aiMatch.type !== "disagree") {
-    if (g.verdict === "ai" || (synthid?.ok && synthid.detected)) {
-      sentences.push(
-        "Препоръка: потвърдете с оригиналния източник и контекста преди да публикувате категорично заключение."
-      );
-    } else if (needsCaution) {
-      sentences.push(
-        "Препоръка: допълнителен ръчен преглед и съпоставка с оригиналната публикация."
-      );
-    } else {
-      sentences.push(
-        "Препоръка: при съмнение съпоставете с други източници — автоматичната проверка не е окончателна."
-      );
-    }
-  }
-
-  const trimmed = sentences.slice(0, 4);
-  return {
-    text: trimmed.join(" "),
-    sentences: trimmed,
-  };
-}
-
-export function editorialToPlainText({ editorial, fileName, at }) {
-  let text = "ТЕКСТ ЗА РЕДАКЦИЯ — factcheck.bg\n";
-  if (fileName || at) {
-    text += [fileName, at].filter(Boolean).join(" · ") + "\n\n";
-  }
-  text += `${editorial.text}\n\n`;
-  text += "—\nАнализ: factcheck.bg · ИИ инструмент\n";
-  return text;
-}
-
 /**
 
  * @returns Unified factcheck report model for UI, copy, and print.
@@ -302,7 +200,6 @@ export function buildFactcheckReport({ aiornot, gemini, exiftool, synthid, fileN
   }
 
   const conclusion = aiMatch.text;
-  const editorial = buildEditorialVerdict({ aiornot, gemini, exiftool, synthid, fileName, at });
 
   return {
     headline: overallHeadline(aiMatch, gemini),
@@ -312,7 +209,6 @@ export function buildFactcheckReport({ aiornot, gemini, exiftool, synthid, fileN
     conclusion,
     bullets: buildBullets({ aiornot, gemini, synthid, focusRegions, aiMatch }),
     aiMatch,
-    editorial,
   };
 }
 

@@ -1,6 +1,1 @@
-export {
-  buildFactcheckReport,
-  buildEditorialVerdict,
-  editorialToPlainText,
-  reportToPlainText,
-} from "./factcheck-report.js";
+export { buildFactcheckReport, reportToPlainText } from "./factcheck-report.js";
