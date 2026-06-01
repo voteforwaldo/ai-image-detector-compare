@@ -86,15 +86,14 @@ function overallHeadline(aiMatch, gemini) {
 
 
 
-function buildBullets({ aiornot, gemini, synthid, focusRegions, aiMatch }) {
+export const SYNTHID_EXPLAINER_PARAGRAPHS = [
+  "SynthID е специален, невидим за човешкото око цифров печат, разработен от Google, който се поставя върху изображения и звуци, за да покаже, че са създадени или променени с помощта на изкуствен интелект.",
+  "Ако такъв печат бъде открит на дадена снимка, това означава просто, че тя не е истинска фотография, заснета от човек с фотоапарат, а е направена или сериозно преработена от компютърна програма с изкуствен интелект.",
+];
+
+function buildBullets({ aiornot, gemini, focusRegions, aiMatch }) {
   const bullets = [];
   const g = cardSnapshot(gemini);
-
-  if (synthid?.ok && synthid.detected) {
-    bullets.push(
-      `Спектралният Synth ID детектор откри Google watermark. ${synthid.summary || ""}`.trim()
-    );
-  }
 
   if (aiMatch.type === "disagree") {
 
@@ -207,8 +206,9 @@ export function buildFactcheckReport({ aiornot, gemini, exiftool, synthid, fileN
     badge: aiMatch,
     rows,
     conclusion,
-    bullets: buildBullets({ aiornot, gemini, synthid, focusRegions, aiMatch }),
+    bullets: buildBullets({ aiornot, gemini, focusRegions, aiMatch }),
     aiMatch,
+    synthidDetected: Boolean(synthid?.ok && synthid.detected),
   };
 }
 
@@ -234,7 +234,13 @@ export function reportToPlainText(report) {
     }
   }
 
-  text += `\nКакво да проверите:\n`;
+  text += `\nКакво да направите:\n`;
+
+  if (report.synthidDetected) {
+    for (const p of SYNTHID_EXPLAINER_PARAGRAPHS) {
+      text += `${p}\n\n`;
+    }
+  }
 
   for (const b of report.bullets) {
 

@@ -1,4 +1,8 @@
-import { buildFactcheckReport, reportToPlainText } from "./factcheck-report.js";
+import {
+  buildFactcheckReport,
+  reportToPlainText,
+  SYNTHID_EXPLAINER_PARAGRAPHS,
+} from "./factcheck-report.js";
 import { resolveFocusRegions } from "./focus-regions.js";
 
 const STORAGE_KEYS = "aidetector_keys";
@@ -35,6 +39,7 @@ const fcReportBadge = $("#fc-report-badge");
 const fcReportRows = $("#fc-report-rows");
 const fcReportConclusion = $("#fc-report-conclusion");
 const fcReportBullets = $("#fc-report-bullets");
+const fcSynthidExplainer = $("#fc-synthid-explainer");
 const focusOverlay = $("#focus-overlay");
 const focusLegend = $("#focus-legend");
 const loadingPanel = $("#loading-panel");
@@ -282,6 +287,18 @@ function renderFactcheckReport(report) {
     .join("");
 
   fcReportBullets.innerHTML = report.bullets.map((b) => `<li>${escHtml(b)}</li>`).join("");
+
+  if (fcSynthidExplainer) {
+    if (report.synthidDetected) {
+      fcSynthidExplainer.innerHTML = SYNTHID_EXPLAINER_PARAGRAPHS.map(
+        (p) => `<p>${escHtml(p)}</p>`
+      ).join("");
+      fcSynthidExplainer.classList.remove("hidden");
+    } else {
+      fcSynthidExplainer.innerHTML = "";
+      fcSynthidExplainer.classList.add("hidden");
+    }
+  }
 
   fcReport.classList.remove("hidden");
 }
@@ -674,7 +691,12 @@ function buildPrintHtml() {
     </table>
     <h3>Общо заключение</h3>
     <p>${escHtml(lastReport.conclusion)}</p>
-    <h3>Какво да проверите</h3>
+    <h3>Какво да направите</h3>
+    ${
+      lastReport.synthidDetected
+        ? SYNTHID_EXPLAINER_PARAGRAPHS.map((p) => `<p>${escHtml(p)}</p>`).join("")
+        : ""
+    }
     <ul>${bullets}</ul>
     <h3>Подробности</h3>
     <p><strong>AI or Not:</strong></p>

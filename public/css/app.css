@@ -807,6 +807,30 @@ body {
   margin-top: 0.85rem;
 }
 
+.fc-synthid-explainer {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+}
+
+.fc-synthid-explainer p {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.fc-synthid-explainer p:last-child {
+  margin-bottom: 0;
+}
+
+[data-theme="dark"] .fc-synthid-explainer {
+  background: rgba(127, 29, 29, 0.2);
+  border-color: #7f1d1d;
+}
+
 .fc-report-bullets {
   margin: 0;
   padding-left: 1.15rem;

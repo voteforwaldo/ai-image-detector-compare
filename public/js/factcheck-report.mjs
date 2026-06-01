@@ -1,1 +1,5 @@
-export { buildFactcheckReport, reportToPlainText } from "./factcheck-report.js";
+export {
+  buildFactcheckReport,
+  reportToPlainText,
+  SYNTHID_EXPLAINER_PARAGRAPHS,
+} from "./factcheck-report.js";
