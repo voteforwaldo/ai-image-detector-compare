@@ -711,14 +711,8 @@ body {
 
 .fc-synthid-banner.is-detected {
   background: #fef2f2;
-  color: #991b1b;
+  color: #b91c1c;
   border: 1px solid #fecaca;
-}
-
-.fc-synthid-banner.is-clean {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
 }
 
 [data-theme="dark"] .fc-synthid-banner.is-detected {
@@ -727,10 +721,17 @@ body {
   border-color: #7f1d1d;
 }
 
-[data-theme="dark"] .fc-synthid-banner.is-clean {
-  background: rgba(22, 101, 52, 0.35);
-  color: #bbf7d0;
-  border-color: #166534;
+.fc-verdict.synthid-detected {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.fc-row-synthid td {
+  vertical-align: middle;
+}
+
+[data-theme="dark"] .fc-verdict.synthid-detected {
+  color: #f87171;
 }
 
 .fc-report-table {
@@ -1089,6 +1090,7 @@ body {
   font-weight: 700;
 }
 
+.synthid-headline.tier-detected,
 .synthid-headline.tier-strong,
 .synthid-headline.tier-likely {
   color: #b91c1c;

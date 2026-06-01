@@ -92,11 +92,7 @@ function buildBullets({ aiornot, gemini, synthid, focusRegions, aiMatch }) {
 
   if (synthid?.ok && synthid.detected) {
     bullets.push(
-      `Спектралният SynthID детектор откри Google watermark (${synthid.headline || synthid.tier}). ${synthid.summary || ""}`.trim()
-    );
-  } else if (synthid?.ok && !synthid.detected) {
-    bullets.push(
-      "SynthID спектралният анализ не намери значим Google watermark — това не доказва човешки произход, но няма технически SynthID след."
+      `Спектралният Synth ID детектор откри Google watermark. ${synthid.summary || ""}`.trim()
     );
   }
 
@@ -172,35 +168,11 @@ function buildBullets({ aiornot, gemini, synthid, focusRegions, aiMatch }) {
 
  */
 
-function synthidSnapshot(data) {
-  if (!data?.ok) return { label: "Грешка", detail: "—", tone: "error" };
-  if (data.detected) {
-    return {
-      label: "Открит",
-      detail:
-        data.phaseMatch != null
-          ? `${(data.phaseMatch * 100).toFixed(1)}% фаза · ${data.tier || "—"}`
-          : data.summary || "—",
-      tone: "ai",
-    };
-  }
-  return {
-    label: "Не е открит",
-    detail:
-      data.phaseMatch != null
-        ? `${(data.phaseMatch * 100).toFixed(1)}% фаза`
-        : "няма значим сигнал",
-    tone: "human",
-  };
-}
-
 export function buildFactcheckReport({ aiornot, gemini, exiftool, synthid, fileName, at, focusRegions }) {
 
   const a = cardSnapshot(aiornot);
 
   const g = cardSnapshot(gemini);
-
-  const s = synthidSnapshot(synthid);
 
   const aiMatch = compareAiVerdicts(a, g);
 
@@ -217,13 +189,17 @@ export function buildFactcheckReport({ aiornot, gemini, exiftool, synthid, fileN
       detail: g.pct != null ? `${g.pct}% сигурност` : "—",
       tone: g.verdict,
     },
-    {
-      source: "SynthID (спектрален)",
-      verdict: s.label,
-      detail: s.detail,
-      tone: s.tone,
-    },
   ];
+
+  if (synthid?.ok && synthid.detected) {
+    rows.push({
+      source: "Synth ID",
+      verdict: "Открит",
+      detail: "",
+      tone: "synthid-detected",
+      noRating: true,
+    });
+  }
 
   const conclusion = aiMatch.text;
 
@@ -253,9 +229,11 @@ export function reportToPlainText(report) {
   text += `Общо: ${report.conclusion}\n\n`;
 
   for (const r of report.rows) {
-
-    text += `${r.source}: ${r.verdict} (${r.detail})\n`;
-
+    if (r.noRating) {
+      text += `${r.source}: ${r.verdict}\n`;
+    } else {
+      text += `${r.source}: ${r.verdict} (${r.detail})\n`;
+    }
   }
 
   text += `\nКакво да проверите:\n`;

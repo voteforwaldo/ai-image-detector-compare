@@ -264,14 +264,21 @@ function renderFactcheckReport(report) {
   fcReportConclusion.textContent = report.conclusion;
 
   fcReportRows.innerHTML = report.rows
-    .map(
-      (r) => `
+    .map((r) => {
+      if (r.noRating) {
+        return `
+    <tr class="fc-row-synthid">
+      <td>${escHtml(r.source)}</td>
+      <td colspan="2"><span class="fc-verdict ${escHtml(r.tone)}">${escHtml(r.verdict)}</span></td>
+    </tr>`;
+      }
+      return `
     <tr>
       <td>${escHtml(r.source)}</td>
       <td><span class="fc-verdict ${escHtml(r.tone)}">${escHtml(r.verdict)}</span></td>
       <td>${escHtml(r.detail)}</td>
-    </tr>`
-    )
+    </tr>`;
+    })
     .join("");
 
   fcReportBullets.innerHTML = report.bullets.map((b) => `<li>${escHtml(b)}</li>`).join("");
@@ -280,19 +287,19 @@ function renderFactcheckReport(report) {
 
 function renderSynthidBanner(synthid) {
   if (!fcSynthidBanner) return;
-  if (!synthid?.ok) {
+  if (!synthid?.ok || !synthid.detected) {
     fcSynthidBanner.classList.add("hidden");
     fcSynthidBanner.textContent = "";
     return;
   }
-  const detected = Boolean(synthid.detected);
-  fcSynthidBanner.textContent = synthid.bannerText || (detected ? "SynthID открит" : "SynthID не е открит");
-  fcSynthidBanner.className = `fc-synthid-banner ${detected ? "is-detected" : "is-clean"}`;
+  fcSynthidBanner.textContent = "Synth ID - Открит";
+  fcSynthidBanner.className = "fc-synthid-banner is-detected";
   fcSynthidBanner.classList.remove("hidden");
 }
 
 function updateSynthid(data) {
   if (!synthidPanel) return;
+  synthidPanel.classList.add("hidden");
   synthidHeadline.textContent = "";
   synthidSummary.textContent = "";
   synthidStats.innerHTML = "";
@@ -300,16 +307,14 @@ function updateSynthid(data) {
   synthidError.classList.add("hidden");
   synthidError.textContent = "";
 
-  if (!data?.ok) {
-    synthidHeadline.textContent = "SynthID анализ — грешка";
-    synthidSummary.textContent = data?.error || "Анализът не успя";
-    synthidError.textContent = data?.error || "SynthID заявката не успя";
-    synthidError.classList.remove("hidden");
+  if (!data?.ok || !data.detected) {
     return;
   }
 
-  synthidHeadline.textContent = data.headline || data.bannerText || "—";
-  synthidHeadline.className = `synthid-headline tier-${data.tier || "clean"}`;
+  synthidPanel.classList.remove("hidden");
+
+  synthidHeadline.textContent = "Synth ID - Открит";
+  synthidHeadline.className = "synthid-headline tier-detected";
   synthidSummary.textContent = data.summary || "";
   synthidDetail.textContent = data.detailText || "";
 
@@ -419,7 +424,6 @@ function hideLoading(finished = true) {
   if (finished) {
     resultsGrid.classList.remove("hidden");
     exifPanel.classList.remove("hidden");
-    synthidPanel?.classList.remove("hidden");
     exportActions.classList.remove("hidden");
     updateStep(3);
   }
@@ -626,7 +630,7 @@ function buildReportText() {
   text += `\n--- Подробности ---\n`;
   if (aiornot?.ok) text += `AI or Not: ${aiornot.summary || ""}\n`;
   if (gemini?.ok) text += `Gemini: ${gemini.summary || ""}\n`;
-  if (synthid?.ok) text += `SynthID: ${synthid.bannerText} — ${synthid.summary || ""}\n`;
+  if (synthid?.ok && synthid.detected) text += `Synth ID: Открит — ${synthid.summary || ""}\n`;
   if (exiftool?.ok) text += `ExifTool: ${exiftool.summary || ""}\n`;
   return text;
 }
@@ -636,10 +640,12 @@ function buildPrintHtml() {
   const { aiornot, gemini, exiftool, synthid, previewSrc } = lastResult;
 
   const tableRows = lastReport.rows
-    .map(
-      (r) =>
-        `<tr><td>${escHtml(r.source)}</td><td>${escHtml(r.verdict)}</td><td>${escHtml(r.detail)}</td></tr>`
-    )
+    .map((r) => {
+      if (r.noRating) {
+        return `<tr><td>${escHtml(r.source)}</td><td colspan="2">${escHtml(r.verdict)}</td></tr>`;
+      }
+      return `<tr><td>${escHtml(r.source)}</td><td>${escHtml(r.verdict)}</td><td>${escHtml(r.detail)}</td></tr>`;
+    })
     .join("");
 
   const bullets = lastReport.bullets.map((b) => `<li>${escHtml(b)}</li>`).join("");
@@ -663,8 +669,12 @@ function buildPrintHtml() {
     <pre>${escHtml(aiornot?.ok ? aiornot.summary : aiornot?.error || "—")}</pre>
     <p><strong>Gemini:</strong></p>
     <pre>${escHtml(gemini?.ok ? gemini.summary : gemini?.error || "—")}</pre>
-    <p><strong>SynthID:</strong></p>
-    <pre>${escHtml(synthid?.ok ? synthid.detailText || synthid.summary : synthid?.error || "—")}</pre>
+    ${
+      synthid?.ok && synthid.detected
+        ? `<p><strong>Synth ID:</strong></p>
+    <pre>${escHtml(synthid.detailText || synthid.summary || "Открит")}</pre>`
+        : ""
+    }
     <p><strong>ExifTool:</strong></p>
     <pre>${escHtml(exiftool?.ok ? exiftool.summary : exiftool?.error || "—")}</pre>
   `;
