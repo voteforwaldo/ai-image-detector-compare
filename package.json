@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node dev-server.mjs",
-    "dev": "node --watch dev-server.mjs"
+    "dev": "node --watch dev-server.mjs",
+    "calibrate:synthid": "node scripts/calibrate-synthid.mjs"
   },
   "engines": {
     "node": "20.x"

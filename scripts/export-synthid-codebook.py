@@ -8,7 +8,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "reverse-synthid-gui" / "src" / "extraction"))
 from synthid_bypass_v4 import SpectralCodebookV4  # noqa: E402
 
-TOP_K = 192
+TOP_K = 256
 CONSENSUS_FLOOR = 0.45
 
 

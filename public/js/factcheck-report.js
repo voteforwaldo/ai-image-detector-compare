@@ -208,7 +208,11 @@ export function buildEditorialVerdict({ aiornot, gemini, exiftool, synthid, file
   }
 
   if (exiftool?.ok) {
-    if (exiftool.hasAiMarkers) {
+    if (exiftool.hasC2paProvenance) {
+      sentences.push(
+        "В метаданните има C2PA / Content Credentials — силен цифров сигнал за алгоритмичен или синтетичен произход."
+      );
+    } else if (exiftool.hasAiMarkers) {
       sentences.push(
         "Метаданните (ExifTool) съдържат маркери, свързани с ИИ, provenance или digital watermark."
       );

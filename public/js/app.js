@@ -333,10 +333,21 @@ function updateSynthid(data) {
   synthidHeadline.textContent = "Synth ID - Открит";
   synthidHeadline.className = "synthid-headline tier-detected";
   synthidSummary.textContent = data.summary || "";
+  synthidPanel.querySelectorAll(".synthid-resolution-note").forEach((el) => el.remove());
+  if (data.resolutionNote) {
+    const note = document.createElement("p");
+    note.className = "synthid-resolution-note";
+    note.textContent = data.resolutionNote;
+    synthidSummary.insertAdjacentElement("afterend", note);
+  }
   synthidDetail.textContent = data.detailText || "";
 
   const stats = [
     ["Фазово съвпадение", data.phaseMatch != null ? `${(data.phaseMatch * 100).toFixed(1)}%` : "—"],
+    [
+      "Универсални носители",
+      data.universalPhase != null ? `${(data.universalPhase * 100).toFixed(1)}%` : "—",
+    ],
     ["Увереност", data.confidencePercent != null ? `${data.confidencePercent}%` : "—"],
     ["Профил", data.profileKey || "—"],
     ["Модел", data.modelUsed || "—"],

@@ -1152,6 +1152,14 @@ body {
   line-height: 1.5;
 }
 
+.synthid-resolution-note {
+  margin: -0.35rem 0 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .synthid-stats {
   display: grid;
   grid-template-columns: minmax(8rem, auto) 1fr;
