@@ -808,27 +808,22 @@ body {
 }
 
 .fc-synthid-explainer {
-  margin: 0 0 1rem;
-  padding: 0.85rem 1rem;
-  border-radius: var(--radius-md);
-  border: 1px solid #fecaca;
-  background: #fef2f2;
+  margin: 1rem 0 0;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .fc-synthid-explainer p {
   margin: 0 0 0.75rem;
   font-size: 0.88rem;
   line-height: 1.6;
-  color: var(--text);
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .fc-synthid-explainer p:last-child {
   margin-bottom: 0;
-}
-
-[data-theme="dark"] .fc-synthid-explainer {
-  background: rgba(127, 29, 29, 0.2);
-  border-color: #7f1d1d;
 }
 
 .fc-report-bullets {
@@ -1657,6 +1652,13 @@ body {
     font-family: var(--font-sans);
     color: #000;
   }
+}
+
+.print-report .fc-synthid-explainer p {
+  font-style: italic;
+  color: #444;
+  font-size: 0.85rem;
+  line-height: 1.55;
 }
 
 .print-report h1 {

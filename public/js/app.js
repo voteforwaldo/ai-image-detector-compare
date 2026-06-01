@@ -692,12 +692,12 @@ function buildPrintHtml() {
     <h3>Общо заключение</h3>
     <p>${escHtml(lastReport.conclusion)}</p>
     <h3>Какво да направите</h3>
+    <ul>${bullets}</ul>
     ${
       lastReport.synthidDetected
-        ? SYNTHID_EXPLAINER_PARAGRAPHS.map((p) => `<p>${escHtml(p)}</p>`).join("")
+        ? `<div class="fc-synthid-explainer">${SYNTHID_EXPLAINER_PARAGRAPHS.map((p) => `<p>${escHtml(p)}</p>`).join("")}</div>`
         : ""
     }
-    <ul>${bullets}</ul>
     <h3>Подробности</h3>
     <p><strong>AI or Not:</strong></p>
     <pre>${escHtml(aiornot?.ok ? aiornot.summary : aiornot?.error || "—")}</pre>

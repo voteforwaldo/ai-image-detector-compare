@@ -236,16 +236,15 @@ export function reportToPlainText(report) {
 
   text += `\nКакво да направите:\n`;
 
+  for (const b of report.bullets) {
+    text += `• ${b}\n`;
+  }
+
   if (report.synthidDetected) {
+    text += "\n";
     for (const p of SYNTHID_EXPLAINER_PARAGRAPHS) {
       text += `${p}\n\n`;
     }
-  }
-
-  for (const b of report.bullets) {
-
-    text += `• ${b}\n`;
-
   }
 
   return text;
