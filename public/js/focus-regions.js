@@ -1,4 +1,48 @@
+const GEMINI_SPARKLE_REGION = {
+  label: "Google sparkle / лого",
+  note: "Долен десен ъгъл — типично място за Gemini watermark (✦) или лого.",
+  x: 0.82,
+  y: 0.82,
+  w: 0.14,
+  h: 0.14,
+  severity: "warn",
+};
+
 const KEYWORD_REGIONS = [
+  {
+    re: /ромб|sparkle|✦|четириопен|google\s*sparkle|долен.*десен|bottom[\s-]?right.*(watermark|лого|sparkle|ромб)/i,
+    ...GEMINI_SPARKLE_REGION,
+  },
+  {
+    re: /digital\s*watermark|c2pa|content\s*credentials|synthid|provenance\s*badge|cr:ai/i,
+    label: "Digital watermark",
+    note: "Проверете за C2PA, Content Credentials или provenance UI.",
+    x: 0.02,
+    y: 0.02,
+    w: 0.96,
+    h: 0.96,
+    severity: "warn",
+  },
+  {
+    re: /watermark|воден\s*знак|лого|logo|stock|getty|shutterstock|digimarc|badge/i,
+    label: "Watermark / лого",
+    note: "Проверете ъглите и ръбовете за видим watermark или лого.",
+    x: 0.02,
+    y: 0.02,
+    w: 0.96,
+    h: 0.96,
+    severity: "warn",
+  },
+  {
+    re: /лого|watermark|воден\s*знак|ui|прозорец|chat|gemini|chatgpt|google\s*ai|made with google/i,
+    label: "AI UI / лого",
+    note: "Проверете за лого, watermark или UI на AI инструмент.",
+    x: 0.02,
+    y: 0.02,
+    w: 0.96,
+    h: 0.96,
+    severity: "warn",
+  },
   { re: /пръст|ръц|длан|анатом/i, label: "Ръце", note: "Проверете анатомията на ръцете и пръстите.", x: 0.32, y: 0.52, w: 0.36, h: 0.28 },
   { re: /очи|лиц|зъб|коса|кожа/i, label: "Лице", note: "Прегледайте лице, очи и детайли на кожата.", x: 0.28, y: 0.08, w: 0.44, h: 0.38 },
   { re: /текст|надпис|букв|символ/i, label: "Текст", note: "Проверете надписи и четимост на текст.", x: 0.08, y: 0.04, w: 0.84, h: 0.22 },
@@ -34,6 +78,26 @@ export function normalizeRegion(r, index) {
   };
 }
 
+function regionKey(r) {
+  return `${r.label}|${Math.round(r.x * 100)}|${Math.round(r.y * 100)}`;
+}
+
+function mergeRegions(...lists) {
+  const out = [];
+  const seen = new Set();
+  for (const list of lists) {
+    for (const r of list) {
+      const norm = normalizeRegion(r, out.length);
+      const key = regionKey(norm);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(norm);
+      if (out.length >= 4) return out;
+    }
+  }
+  return out;
+}
+
 export function inferFocusFromSummary(text) {
   if (!text) return [];
   const lower = text.toLowerCase();
@@ -54,14 +118,42 @@ export function inferFocusFromSummary(text) {
     if (found.length >= 4) break;
   }
 
-  return found.map(normalizeRegion);
+  return found;
+}
+
+/** Ensure logo/sparkle corner is always offered for visual check. */
+function ensureLogoCornerCheck(regions, gemini) {
+  const hasCorner = regions.some(
+    (r) =>
+      /sparkle|ромб|лого|watermark|gemini/i.test(`${r.label} ${r.note}`) &&
+      r.x >= 0.65 &&
+      r.y >= 0.65
+  );
+  if (hasCorner) return regions;
+
+  const sparkleFromModel = gemini?.googleSparkle === true;
+  const googleAi =
+    sparkleFromModel ||
+    /gemini|google\s*ai|imagen/i.test(String(gemini?.platformLogo || "")) ||
+    gemini?.verdict === "ai";
+
+  if (sparkleFromModel || googleAi || regions.length < 4) {
+    return mergeRegions([GEMINI_SPARKLE_REGION], regions);
+  }
+  return regions;
 }
 
 export function resolveFocusRegions(gemini) {
   if (!gemini?.ok) return [];
+
+  let regions = [];
   const fromApi = gemini.focusRegions;
   if (Array.isArray(fromApi) && fromApi.length) {
-    return fromApi.map(normalizeRegion);
+    regions = fromApi.map((r, i) => normalizeRegion(r, i));
+  } else {
+    regions = inferFocusFromSummary(gemini.summary || "");
   }
-  return inferFocusFromSummary(gemini.summary || gemini.rawText || "");
+
+  regions = ensureLogoCornerCheck(regions, gemini);
+  return regions.map((r, i) => ({ ...r, id: i + 1 }));
 }
