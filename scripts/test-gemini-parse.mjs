@@ -33,5 +33,12 @@ const r3 = parseGeminiResponse(googleLogoCase);
 assert(r3.verdict === "ai", `platform_logo gemini → ai, got ${r3.verdict}`);
 assert(r3.confidence_percent >= 95, `expected high AI conf, got ${r3.confidence_percent}`);
 
+const googleSparkleCase = `Forensic: в долния десен ъгъл се вижда полупрозрачен Gemini sparkle watermark (✦).
+{"verdict":"human","confidence_percent":88,"google_sparkle":true,"platform_logo":"gemini","summary":"Липсват AI артефакти.","focus_regions":[]}`;
+const r4 = parseGeminiResponse(googleSparkleCase);
+assert(r4.verdict === "ai", `google_sparkle → ai, got ${r4.verdict}`);
+assert(r4.confidence_percent >= 96, `sparkle conf ≥96, got ${r4.confidence_percent}`);
+assert(/sparkle|ромб|✦/i.test(r4.summary), `summary mentions sparkle: ${r4.summary}`);
+
 console.log("OK — Gemini parse/reconcile tests passed");
 console.log("  userCase:", r1.verdict, r1.confidence_percent + "%", "→", r1.summary.slice(0, 80) + "...");

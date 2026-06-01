@@ -86,11 +86,19 @@ function overallHeadline(aiMatch, gemini) {
 
 
 
-function buildBullets({ aiornot, gemini, focusRegions, aiMatch }) {
+function buildBullets({ aiornot, gemini, synthid, focusRegions, aiMatch }) {
   const bullets = [];
   const g = cardSnapshot(gemini);
 
-
+  if (synthid?.ok && synthid.detected) {
+    bullets.push(
+      `Спектралният SynthID детектор откри Google watermark (${synthid.headline || synthid.tier}). ${synthid.summary || ""}`.trim()
+    );
+  } else if (synthid?.ok && !synthid.detected) {
+    bullets.push(
+      "SynthID спектралният анализ не намери значим Google watermark — това не доказва човешки произход, но няма технически SynthID след."
+    );
+  }
 
   if (aiMatch.type === "disagree") {
 
@@ -164,11 +172,35 @@ function buildBullets({ aiornot, gemini, focusRegions, aiMatch }) {
 
  */
 
-export function buildFactcheckReport({ aiornot, gemini, exiftool, fileName, at, focusRegions }) {
+function synthidSnapshot(data) {
+  if (!data?.ok) return { label: "Грешка", detail: "—", tone: "error" };
+  if (data.detected) {
+    return {
+      label: "Открит",
+      detail:
+        data.phaseMatch != null
+          ? `${(data.phaseMatch * 100).toFixed(1)}% фаза · ${data.tier || "—"}`
+          : data.summary || "—",
+      tone: "ai",
+    };
+  }
+  return {
+    label: "Не е открит",
+    detail:
+      data.phaseMatch != null
+        ? `${(data.phaseMatch * 100).toFixed(1)}% фаза`
+        : "няма значим сигнал",
+    tone: "human",
+  };
+}
+
+export function buildFactcheckReport({ aiornot, gemini, exiftool, synthid, fileName, at, focusRegions }) {
 
   const a = cardSnapshot(aiornot);
 
   const g = cardSnapshot(gemini);
+
+  const s = synthidSnapshot(synthid);
 
   const aiMatch = compareAiVerdicts(a, g);
 
@@ -185,6 +217,12 @@ export function buildFactcheckReport({ aiornot, gemini, exiftool, fileName, at, 
       detail: g.pct != null ? `${g.pct}% сигурност` : "—",
       tone: g.verdict,
     },
+    {
+      source: "SynthID (спектрален)",
+      verdict: s.label,
+      detail: s.detail,
+      tone: s.tone,
+    },
   ];
 
   const conclusion = aiMatch.text;
@@ -195,7 +233,7 @@ export function buildFactcheckReport({ aiornot, gemini, exiftool, fileName, at, 
     badge: aiMatch,
     rows,
     conclusion,
-    bullets: buildBullets({ aiornot, gemini, focusRegions, aiMatch }),
+    bullets: buildBullets({ aiornot, gemini, synthid, focusRegions, aiMatch }),
     aiMatch,
   };
 }

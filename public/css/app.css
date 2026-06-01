@@ -700,6 +700,39 @@ body {
   border: 1px solid var(--border);
 }
 
+.fc-synthid-banner {
+  margin: 0 0 1rem;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fc-synthid-banner.is-detected {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.fc-synthid-banner.is-clean {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+[data-theme="dark"] .fc-synthid-banner.is-detected {
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+  border-color: #7f1d1d;
+}
+
+[data-theme="dark"] .fc-synthid-banner.is-clean {
+  background: rgba(22, 101, 52, 0.35);
+  color: #bbf7d0;
+  border-color: #166534;
+}
+
 .fc-report-table {
   width: 100%;
   border-collapse: collapse;
@@ -1036,6 +1069,78 @@ body {
 
 .exif-title-link:hover {
   text-decoration: underline;
+}
+
+.result-header.synthid .provider-icon {
+  color: #7c3aed;
+}
+
+.synthid-panel {
+  margin-top: 1rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-elevated);
+}
+
+.synthid-headline {
+  margin: 0.5rem 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.synthid-headline.tier-strong,
+.synthid-headline.tier-likely {
+  color: #b91c1c;
+}
+
+.synthid-headline.tier-weak,
+.synthid-headline.tier-trace {
+  color: #c2410c;
+}
+
+.synthid-headline.tier-clean {
+  color: #166534;
+}
+
+.synthid-summary {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.synthid-stats {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.82rem;
+}
+
+.synthid-stats dt {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.synthid-stats dd {
+  margin: 0;
+  font-family: var(--font-mono);
+}
+
+.synthid-detail {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  max-height: 280px;
+  overflow: auto;
 }
 
 .exif-panel {

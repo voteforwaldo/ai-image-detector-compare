@@ -62,7 +62,7 @@
           />
           <div class="brand-title-box">
             <h1 class="brand-title">ИИ инструмент</h1>
-            <p class="tagline">API · Gemini · ExifTool</p>
+            <p class="tagline">API · Gemini · SynthID · ExifTool</p>
           </div>
         </div>
         <div class="topbar-actions">
@@ -152,6 +152,7 @@
               </div>
               <span class="fc-report-badge partial" id="fc-report-badge">—</span>
             </header>
+            <p class="fc-synthid-banner hidden" id="fc-synthid-banner" role="status"></p>
             <table class="fc-report-table">
               <thead>
                 <tr>
@@ -204,6 +205,12 @@
               <div class="sk-line sk-bar"></div>
               <div class="sk-line sk-bar short"></div>
               <p class="loading-label">ExifTool чете метаданни...</p>
+            </div>
+            <div class="loading-card skeleton">
+              <div class="sk-line sk-title"></div>
+              <div class="sk-line sk-bar"></div>
+              <div class="sk-line sk-bar short"></div>
+              <p class="loading-label">SynthID спектрален детектор...</p>
             </div>
           </div>
 
@@ -292,6 +299,21 @@
             </article>
 
           </div>
+
+          <article class="synthid-panel hidden" id="synthid-panel">
+            <header class="result-header synthid">
+              <span class="provider-icon">◎</span>
+              <div>
+                <h3>SynthID детектор</h3>
+                <p class="provider-sub">Спектрален V4 · reverse-SynthID (локален)</p>
+              </div>
+            </header>
+            <p class="synthid-headline" id="synthid-headline"></p>
+            <p class="synthid-summary" id="synthid-summary"></p>
+            <dl class="synthid-stats" id="synthid-stats" aria-label="SynthID метрики"></dl>
+            <pre class="synthid-detail" id="synthid-detail"></pre>
+            <p class="result-error hidden" id="synthid-error"></p>
+          </article>
 
           <article class="exif-panel hidden" id="exif-panel">
             <header class="result-header exiftool">

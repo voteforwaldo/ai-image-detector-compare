@@ -1,4 +1,5 @@
 const KEYWORD_REGIONS = [
+  { re: /ромб|sparkle|✦|четириопен|google\s*sparkle|долен.*десен.*watermark/i, label: "Google рomb/sparkle", note: "Проверете долния десен ъгъл за Gemini sparkle (✦).", x: 0.82, y: 0.82, w: 0.14, h: 0.14, severity: "warn" },
   { re: /digital\s*watermark|c2pa|content\s*credentials|synthid|provenance\s*badge|cr:ai/i, label: "Digital watermark", note: "Проверете за C2PA, Content Credentials или provenance UI.", x: 0.02, y: 0.02, w: 0.96, h: 0.96, severity: "warn" },
   { re: /watermark|воден\s*знак|лого|stock|getty|shutterstock|digimarc/i, label: "Watermark", note: "Проверете ъглите и ръбовете за видим watermark или лого.", x: 0.02, y: 0.02, w: 0.96, h: 0.96, severity: "warn" },
   { re: /лого|watermark|воден\s*знак|badge|ui|прозорец|chat|gemini|chatgpt|google\s*ai/i, label: "AI UI/лого", note: "Проверете за лого, watermark или UI на AI инструмент.", x: 0.02, y: 0.02, w: 0.96, h: 0.96, severity: "warn" },

@@ -42,6 +42,13 @@ const analyzeError = $("#analyze-error");
 const analyzeErrorMsg = $("#analyze-error-msg");
 const btnRetryAnalyze = $("#btn-retry-analyze");
 const resultsGrid = $("#results-grid");
+const fcSynthidBanner = $("#fc-synthid-banner");
+const synthidPanel = $("#synthid-panel");
+const synthidHeadline = $("#synthid-headline");
+const synthidSummary = $("#synthid-summary");
+const synthidStats = $("#synthid-stats");
+const synthidDetail = $("#synthid-detail");
+const synthidError = $("#synthid-error");
 const exifPanel = $("#exif-panel");
 const exifSummary = $("#exif-summary");
 const exifHighlights = $("#exif-highlights");
@@ -271,6 +278,58 @@ function renderFactcheckReport(report) {
   fcReport.classList.remove("hidden");
 }
 
+function renderSynthidBanner(synthid) {
+  if (!fcSynthidBanner) return;
+  if (!synthid?.ok) {
+    fcSynthidBanner.classList.add("hidden");
+    fcSynthidBanner.textContent = "";
+    return;
+  }
+  const detected = Boolean(synthid.detected);
+  fcSynthidBanner.textContent = synthid.bannerText || (detected ? "SynthID открит" : "SynthID не е открит");
+  fcSynthidBanner.className = `fc-synthid-banner ${detected ? "is-detected" : "is-clean"}`;
+  fcSynthidBanner.classList.remove("hidden");
+}
+
+function updateSynthid(data) {
+  if (!synthidPanel) return;
+  synthidHeadline.textContent = "";
+  synthidSummary.textContent = "";
+  synthidStats.innerHTML = "";
+  synthidDetail.textContent = "";
+  synthidError.classList.add("hidden");
+  synthidError.textContent = "";
+
+  if (!data?.ok) {
+    synthidHeadline.textContent = "SynthID анализ — грешка";
+    synthidSummary.textContent = data?.error || "Анализът не успя";
+    synthidError.textContent = data?.error || "SynthID заявката не успя";
+    synthidError.classList.remove("hidden");
+    return;
+  }
+
+  synthidHeadline.textContent = data.headline || data.bannerText || "—";
+  synthidHeadline.className = `synthid-headline tier-${data.tier || "clean"}`;
+  synthidSummary.textContent = data.summary || "";
+  synthidDetail.textContent = data.detailText || "";
+
+  const stats = [
+    ["Фазово съвпадение", data.phaseMatch != null ? `${(data.phaseMatch * 100).toFixed(1)}%` : "—"],
+    ["Увереност", data.confidencePercent != null ? `${data.confidencePercent}%` : "—"],
+    ["Профил", data.profileKey || "—"],
+    ["Модел", data.modelUsed || "—"],
+    ["Резолюция", data.exactResolution ? "точна" : "приближена"],
+  ];
+  for (const [label, value] of stats) {
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    synthidStats.appendChild(dt);
+    synthidStats.appendChild(dd);
+  }
+}
+
 function renderFocusOverlay(regions) {
   focusOverlay.innerHTML = "";
   focusLegend.innerHTML = "";
@@ -321,6 +380,8 @@ function showLoading() {
   fcReport.classList.add("hidden");
   resultsGrid.classList.add("hidden");
   exifPanel.classList.add("hidden");
+  synthidPanel?.classList.add("hidden");
+  if (fcSynthidBanner) fcSynthidBanner.classList.add("hidden");
   exportActions.classList.add("hidden");
   loadingPanel.classList.remove("hidden");
   renderFocusOverlay([]);
@@ -358,6 +419,7 @@ function hideLoading(finished = true) {
   if (finished) {
     resultsGrid.classList.remove("hidden");
     exifPanel.classList.remove("hidden");
+    synthidPanel?.classList.remove("hidden");
     exportActions.classList.remove("hidden");
     updateStep(3);
   }
@@ -560,17 +622,18 @@ function buildReportText() {
   let text = reportToPlainText(lastReport);
   if (!lastResult) return text;
 
-  const { aiornot, gemini, exiftool } = lastResult;
+  const { aiornot, gemini, exiftool, synthid } = lastResult;
   text += `\n--- Подробности ---\n`;
   if (aiornot?.ok) text += `AI or Not: ${aiornot.summary || ""}\n`;
   if (gemini?.ok) text += `Gemini: ${gemini.summary || ""}\n`;
+  if (synthid?.ok) text += `SynthID: ${synthid.bannerText} — ${synthid.summary || ""}\n`;
   if (exiftool?.ok) text += `ExifTool: ${exiftool.summary || ""}\n`;
   return text;
 }
 
 function buildPrintHtml() {
   if (!lastResult || !lastReport) return "";
-  const { aiornot, gemini, exiftool, previewSrc } = lastResult;
+  const { aiornot, gemini, exiftool, synthid, previewSrc } = lastResult;
 
   const tableRows = lastReport.rows
     .map(
@@ -600,6 +663,8 @@ function buildPrintHtml() {
     <pre>${escHtml(aiornot?.ok ? aiornot.summary : aiornot?.error || "—")}</pre>
     <p><strong>Gemini:</strong></p>
     <pre>${escHtml(gemini?.ok ? gemini.summary : gemini?.error || "—")}</pre>
+    <p><strong>SynthID:</strong></p>
+    <pre>${escHtml(synthid?.ok ? synthid.detailText || synthid.summary : synthid?.error || "—")}</pre>
     <p><strong>ExifTool:</strong></p>
     <pre>${escHtml(exiftool?.ok ? exiftool.summary : exiftool?.error || "—")}</pre>
   `;
@@ -690,6 +755,7 @@ async function runAnalysis() {
       aiornot: data.aiornot,
       gemini: data.gemini,
       exiftool: data.exiftool,
+      synthid: data.synthid,
       focusRegions,
       fileName: selectedFile.name,
       at,
@@ -699,12 +765,15 @@ async function runAnalysis() {
     updateCard("aon", data.aiornot);
     updateCard("gem", data.gemini);
     updateExiftool(data.exiftool);
+    updateSynthid(data.synthid);
+    renderSynthidBanner(data.synthid);
     renderFocusOverlay(focusRegions);
     renderFactcheckReport(
       buildFactcheckReport({
         aiornot: data.aiornot,
         gemini: data.gemini,
         exiftool: data.exiftool,
+        synthid: data.synthid,
         fileName: selectedFile.name,
         at,
         focusRegions,
@@ -735,6 +804,12 @@ async function runAnalysis() {
       log(`ExifTool: ${exifNote}`);
     } else {
       log(`ExifTool — грешка: ${data.exiftool?.error}`, "error");
+    }
+
+    if (data.synthid?.ok) {
+      log(`SynthID: ${data.synthid.bannerText} (${data.synthid.tier}, ${(data.synthid.phaseMatch * 100).toFixed(1)}% фаза)`);
+    } else {
+      log(`SynthID — грешка: ${data.synthid?.error}`, "error");
     }
 
     log("Готово.");
