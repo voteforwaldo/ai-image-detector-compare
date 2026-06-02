@@ -1,6 +1,6 @@
 const GEMINI_SPARKLE_REGION = {
   label: "Google sparkle / лого",
-  note: "Долен десен ъгъл — типично място за Gemini watermark (✦) или лого.",
+  note: "Долен десен ъгъл — открит Gemini watermark (✦) или лого.",
   x: 0.82,
   y: 0.82,
   w: 0.14,
@@ -8,49 +8,104 @@ const GEMINI_SPARKLE_REGION = {
   severity: "warn",
 };
 
-const KEYWORD_REGIONS = [
+/** Forensic zones only — not logo/watermark (those need positive detection). */
+const FORENSIC_KEYWORD_REGIONS = [
   {
-    re: /ромб|sparkle|✦|четириопен|google\s*sparkle|долен.*десен|bottom[\s-]?right.*(watermark|лого|sparkle|ромб)/i,
-    ...GEMINI_SPARKLE_REGION,
+    re: /(?:пръст|ръц|длан).{0,40}(?:деформа|греш|неестеств|лиш|слип|артефакт|анатом)/i,
+    label: "Ръце",
+    note: "Проверете анатомията на ръцете и пръстите.",
+    x: 0.32,
+    y: 0.52,
+    w: 0.36,
+    h: 0.28,
   },
   {
-    re: /digital\s*watermark|c2pa|content\s*credentials|synthid|provenance\s*badge|cr:ai/i,
-    label: "Digital watermark",
-    note: "Проверете за C2PA, Content Credentials или provenance UI.",
-    x: 0.02,
-    y: 0.02,
-    w: 0.96,
-    h: 0.96,
-    severity: "warn",
+    re: /(?:очи|лиц|зъб|коса|кожа).{0,40}(?:деформа|греш|неестеств|артефакт|размаз|смаз)/i,
+    label: "Лице",
+    note: "Прегледайте лице, очи и детайли на кожата.",
+    x: 0.28,
+    y: 0.08,
+    w: 0.44,
+    h: 0.38,
   },
   {
-    re: /watermark|воден\s*знак|лого|logo|stock|getty|shutterstock|digimarc|badge/i,
-    label: "Watermark / лого",
-    note: "Проверете ъглите и ръбовете за видим watermark или лого.",
-    x: 0.02,
-    y: 0.02,
-    w: 0.96,
-    h: 0.96,
-    severity: "warn",
+    re: /(?:текст|надпис|букв).{0,40}(?:греш|нечет|артефакт|изкрив|смаз|неразб)/i,
+    label: "Текст",
+    note: "Проверете надписи и четимост на текст.",
+    x: 0.08,
+    y: 0.04,
+    w: 0.84,
+    h: 0.22,
   },
   {
-    re: /лого|watermark|воден\s*знак|ui|прозорец|chat|gemini|chatgpt|google\s*ai|made with google/i,
-    label: "AI UI / лого",
-    note: "Проверете за лого, watermark или UI на AI инструмент.",
-    x: 0.02,
-    y: 0.02,
-    w: 0.96,
-    h: 0.96,
-    severity: "warn",
+    re: /(?:фон|заден план).{0,40}(?:несъответ|артефакт|неестеств|повтар)/i,
+    label: "Фон",
+    note: "Потърсете несъответствия във фона.",
+    x: 0.05,
+    y: 0.05,
+    w: 0.9,
+    h: 0.9,
+    severity: "info",
   },
-  { re: /пръст|ръц|длан|анатом/i, label: "Ръце", note: "Проверете анатомията на ръцете и пръстите.", x: 0.32, y: 0.52, w: 0.36, h: 0.28 },
-  { re: /очи|лиц|зъб|коса|кожа/i, label: "Лице", note: "Прегледайте лице, очи и детайли на кожата.", x: 0.28, y: 0.08, w: 0.44, h: 0.38 },
-  { re: /текст|надпис|букв|символ/i, label: "Текст", note: "Проверете надписи и четимост на текст.", x: 0.08, y: 0.04, w: 0.84, h: 0.22 },
-  { re: /фон|заден план/i, label: "Фон", note: "Потърсете несъответствия във фона.", x: 0.05, y: 0.05, w: 0.9, h: 0.9, severity: "info" },
-  { re: /сенк|осветл|отраж/i, label: "Осветление", note: "Сравнете сенки, светлина и отражения.", x: 0.15, y: 0.45, w: 0.7, h: 0.45 },
-  { re: /текстур|артефакт|контур|симетр/i, label: "Текстури", note: "Обърнете внимание на повтарящи се или неестествени текстури.", x: 0.12, y: 0.12, w: 0.76, h: 0.76 },
-  { re: /перспектив|деформац|структур/i, label: "Перспектива", note: "Проверете геометрия и перспектива.", x: 0.2, y: 0.2, w: 0.6, h: 0.6 },
+  {
+    re: /(?:сенк|осветл|отраж).{0,40}(?:несъответ|греш|неестеств|липс)/i,
+    label: "Осветление",
+    note: "Сравнете сенки, светлина и отражения.",
+    x: 0.15,
+    y: 0.45,
+    w: 0.7,
+    h: 0.45,
+  },
+  {
+    re: /(?:текстур|артефакт|контур|симетр).{0,40}(?:неестеств|повтар|греш|артефакт)/i,
+    label: "Текстури",
+    note: "Обърнете внимание на повтарящи се или неестествени текстури.",
+    x: 0.12,
+    y: 0.12,
+    w: 0.76,
+    h: 0.76,
+  },
+  {
+    re: /(?:перспектив|деформац|структур).{0,40}(?:греш|неестеств|изкрив)/i,
+    label: "Перспектива",
+    note: "Проверете геометрия и перспектива.",
+    x: 0.2,
+    y: 0.2,
+    w: 0.6,
+    h: 0.6,
+  },
 ];
+
+const POSITIVE_LOGO_EVIDENCE_RE = [
+  /(?:видим|открит|наличен|забелязан|присъства|има|се\s+вижда).{0,55}(?:sparkle|ромб|✦|воден\s*знак|watermark|лого|badge)/i,
+  /(?:sparkle|ромб|✦|воден\s*знак|watermark|лого|badge).{0,55}(?:видим|открит|наличен|забелязан|присъства|се\s+вижда)/i,
+  /долен[\s-]*десен.{0,45}(?:вижда|открит|sparkle|ромб|watermark|✦|лого)/i,
+  /(?:google\s*)?sparkle\s*watermark/i,
+  /made with google/i,
+  /content\s*credentials.{0,30}(?:видим|открит|икон|badge|panel)/i,
+  /c2pa.{0,30}(?:видим|открит|badge|икон|panel)/i,
+];
+
+const LOGO_ABSENCE_RE =
+  /(?:няма|без|липсва|не\s+(?:са\s+)?открит|не\s+(?:се\s+)?(?:вижда|открива)|not\s+(?:visibly\s+)?(?:detected|found|present)|no\s+visible|absent).{0,50}(?:sparkle|ромб|✦|воден\s*знак|видим\s*watermark|видим\s*лого|google\s*sparkle|watermarks?|лого)/i;
+
+const LOGO_ABSENCE_REVERSE =
+  /(?:sparkle|ромб|✦|воден\s*знак|видим\s*watermark|видим\s*лого|google\s*sparkle|watermarks?|лого).{0,50}(?:няма|липсва|не\s+(?:са\s+)?открит|не\s+(?:се\s+)?вижда|not\s+found|absent)/i;
+
+const KNOWN_PLATFORM_LOGOS = new Set([
+  "gemini",
+  "google",
+  "google_ai",
+  "imagen",
+  "openai",
+  "chatgpt",
+  "dalle",
+  "midjourney",
+  "adobe",
+  "getty",
+  "shutterstock",
+  "canva",
+]);
 
 export function clamp01(n) {
   const x = Number(n);
@@ -98,13 +153,45 @@ function mergeRegions(...lists) {
   return out;
 }
 
-export function inferFocusFromSummary(text) {
+function isLogoLikeRegion(r) {
+  return /sparkle|ромб|✦|лого|watermark|воден\s*знак|gemini|google\s*ai|c2pa|provenance|digital\s*watermark|ai\s*ui/i.test(
+    `${r.label} ${r.note}`
+  );
+}
+
+/** True only when model or text says a logo/watermark was actually seen. */
+export function hasPositiveLogoEvidence(text, gemini) {
+  if (gemini?.googleSparkle === true) return true;
+
+  const pl = String(gemini?.platformLogo || "")
+    .toLowerCase()
+    .trim();
+  if (pl && pl !== "none" && pl !== "unknown" && KNOWN_PLATFORM_LOGOS.has(pl.replace(/\s+/g, "_"))) {
+    return true;
+  }
+
+  if (!text) return false;
+  const t = text.trim();
+  if (!t) return false;
+
+  if (LOGO_ABSENCE_RE.test(t) || LOGO_ABSENCE_REVERSE.test(t)) {
+    return false;
+  }
+
+  return POSITIVE_LOGO_EVIDENCE_RE.some((re) => re.test(t));
+}
+
+function filterLogoRegions(regions, gemini, summary) {
+  if (hasPositiveLogoEvidence(summary, gemini)) return regions;
+  return regions.filter((r) => !isLogoLikeRegion(r));
+}
+
+export function inferForensicFromSummary(text) {
   if (!text) return [];
-  const lower = text.toLowerCase();
   const found = [];
 
-  for (const item of KEYWORD_REGIONS) {
-    if (item.re.test(lower)) {
+  for (const item of FORENSIC_KEYWORD_REGIONS) {
+    if (item.re.test(text)) {
       found.push({
         label: item.label,
         note: item.note,
@@ -121,39 +208,40 @@ export function inferFocusFromSummary(text) {
   return found;
 }
 
-/** Ensure logo/sparkle corner is always offered for visual check. */
-function ensureLogoCornerCheck(regions, gemini) {
+/** Add bottom-right corner only when sparkle/logo was positively detected. */
+function ensureLogoCornerIfDetected(regions, gemini, summary) {
+  if (!hasPositiveLogoEvidence(summary, gemini)) return regions;
+
   const hasCorner = regions.some(
     (r) =>
-      /sparkle|ромб|лого|watermark|gemini/i.test(`${r.label} ${r.note}`) &&
+      /sparkle|ромб|✦|лого|watermark/i.test(`${r.label} ${r.note}`) &&
       r.x >= 0.65 &&
       r.y >= 0.65
   );
   if (hasCorner) return regions;
 
-  const sparkleFromModel = gemini?.googleSparkle === true;
-  const googleAi =
-    sparkleFromModel ||
-    /gemini|google\s*ai|imagen/i.test(String(gemini?.platformLogo || "")) ||
-    gemini?.verdict === "ai";
-
-  if (sparkleFromModel || googleAi || regions.length < 4) {
-    return mergeRegions([GEMINI_SPARKLE_REGION], regions);
-  }
-  return regions;
+  return mergeRegions([GEMINI_SPARKLE_REGION], regions);
 }
 
 export function resolveFocusRegions(gemini) {
   if (!gemini?.ok) return [];
 
+  const summary = gemini.summary || gemini.rawText || "";
   let regions = [];
+
   const fromApi = gemini.focusRegions;
   if (Array.isArray(fromApi) && fromApi.length) {
     regions = fromApi.map((r, i) => normalizeRegion(r, i));
+    regions = filterLogoRegions(regions, gemini, summary);
   } else {
-    regions = inferFocusFromSummary(gemini.summary || "");
+    regions = inferForensicFromSummary(summary);
   }
 
-  regions = ensureLogoCornerCheck(regions, gemini);
+  regions = ensureLogoCornerIfDetected(regions, gemini, summary);
   return regions.map((r, i) => ({ ...r, id: i + 1 }));
+}
+
+/** @deprecated use inferForensicFromSummary */
+export function inferFocusFromSummary(text) {
+  return inferForensicFromSummary(text);
 }
