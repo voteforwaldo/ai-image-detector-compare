@@ -1,9 +1,19 @@
-import { sendJson, withJson } from "../lib/api-util.mjs";
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
 
-export default withJson(async (req, res) => {
-  if (req.method !== "GET") {
-    sendJson(res, 405, { error: "Методът не е позволен" });
-    return;
-  }
-  sendJson(res, 200, { ok: true, service: "ai-image-detector" });
-});
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
+export function GET() {
+  return new Response(
+    JSON.stringify({ ok: true, service: "ai-image-detector", entry: "web-handler" }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json; charset=utf-8", ...CORS },
+    }
+  );
+}

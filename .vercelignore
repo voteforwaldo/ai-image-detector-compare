@@ -1,4 +1,4 @@
 ﻿dev-server.mjs
-api/**
+server.mjs
 .env
 .env.*

@@ -4,117 +4,75 @@ import {
   MAX_UPLOAD_BYTES,
   missingKeyMessage,
 } from "../lib/api-helpers.mjs";
-import { sendJson, withJson } from "../lib/api-util.mjs";
 import { isAuthenticated, authDeniedResponse } from "../lib/site-auth.mjs";
 
 export const maxDuration = 300;
 
-function parseMultipart(buffer, contentType) {
-  const boundaryMatch = /boundary=(.+)$/i.exec(contentType || "");
-  if (!boundaryMatch) throw new Error("Очаквани са multipart form данни");
-  const boundary = boundaryMatch[1].replace(/"/g, "");
-  const parts = buffer.toString("binary").split(`--${boundary}`);
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
 
-  let fileBuffer = null;
-  let filename = "upload.jpg";
-  let mimeType = "image/jpeg";
-  let aiornotKey = "";
-  let geminiKey = "";
-
-  for (const part of parts) {
-    if (!part || part === "--\r\n" || part === "--") continue;
-    const headerEnd = part.indexOf("\r\n\r\n");
-    if (headerEnd === -1) continue;
-    const headers = part.slice(0, headerEnd);
-    const body = part.slice(headerEnd + 4).replace(/\r\n$/, "");
-    const nameMatch = /name="([^"]+)"/i.exec(headers);
-    const filenameMatch = /filename="([^"]+)"/i.exec(headers);
-    const typeMatch = /Content-Type:\s*([^\r\n]+)/i.exec(headers);
-    const name = nameMatch?.[1];
-
-    if (name === "image" && filenameMatch) {
-      fileBuffer = Buffer.from(body, "binary");
-      filename = filenameMatch[1];
-      if (typeMatch) mimeType = typeMatch[1].trim();
-    } else if (name === "aiornot_key") {
-      aiornotKey = Buffer.from(body, "binary").toString("utf8").trim();
-    } else if (name === "gemini_key") {
-      geminiKey = Buffer.from(body, "binary").toString("utf8").trim();
-    }
-  }
-
-  if (!fileBuffer?.length) throw new Error("В заявката няма файл с изображение");
-  return { fileBuffer, filename, mimeType, aiornotKey, geminiKey };
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", ...CORS },
+  });
 }
 
-async function readRawBody(req) {
-  const chunks = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += chunk.length;
-    if (size > MAX_UPLOAD_BYTES) {
-      const err = new Error("Файлът е твърде голям (макс. 4 МБ). Намалете изображението.");
-      err.code = "payload_too_large";
-      throw err;
-    }
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks);
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
 }
 
-export default withJson(async (req, res) => {
-  if (req.method !== "POST") {
-    sendJson(res, 405, { error: "Методът не е позволен" });
-    return;
-  }
-
-  if (!isAuthenticated(req.headers.cookie)) {
+export async function POST(request) {
+  const cookie = request.headers.get("cookie") || "";
+  if (!isAuthenticated(cookie)) {
     const denied = authDeniedResponse();
-    sendJson(res, denied.status, denied.body);
-    return;
+    return json(denied.body, denied.status);
   }
 
-  let body;
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > MAX_UPLOAD_BYTES) {
+    return json(
+      { error: "Файлът е твърде голям (макс. 4 МБ).", code: "payload_too_large" },
+      413
+    );
+  }
+
   try {
-    body = await readRawBody(req);
+    const form = await request.formData();
+    const image = form.get("image");
+    if (!image || typeof image === "string") {
+      return json({ error: "В заявката няма файл с изображение" }, 400);
+    }
+    if (image.size > MAX_UPLOAD_BYTES) {
+      return json(
+        { error: "Файлът е твърде голям (макс. 4 МБ).", code: "payload_too_large" },
+        413
+      );
+    }
+
+    const fileBuffer = Buffer.from(await image.arrayBuffer());
+    const filename = image.name || "upload.jpg";
+    const mimeType = image.type || "image/jpeg";
+    const trimKey = (v) => String(v || "").trim().replace(/^["']|["']$/g, "");
+    const envKeys = getApiKeys();
+    const keys = {
+      aiornotKey: trimKey(form.get("aiornot_key") || envKeys.aiornotKey),
+      geminiKey: trimKey(form.get("gemini_key") || envKeys.geminiKey),
+    };
+
+    const keyError = missingKeyMessage(keys);
+    if (keyError) {
+      return json({ error: keyError, code: "missing_keys" }, 400);
+    }
+
+    const { analyzeImage } = await import("../lib/analyze.mjs");
+    const result = await analyzeImage(fileBuffer, filename, mimeType, keys);
+    return json(buildAnalyzePayload(result));
   } catch (err) {
-    const status = err?.code === "payload_too_large" ? 413 : 400;
-    sendJson(res, status, {
-      error: err?.message || "Невалидна заявка",
-      code: err?.code || "bad_request",
-    });
-    return;
+    console.error("analyze error:", err);
+    return json({ error: err?.message || "Анализът не успя", code: "server_error" }, 500);
   }
-
-  let fileBuffer;
-  let filename;
-  let mimeType;
-  let aiornotKey;
-  let geminiKey;
-  try {
-    ({ fileBuffer, filename, mimeType, aiornotKey, geminiKey } = parseMultipart(
-      body,
-      req.headers["content-type"]
-    ));
-  } catch (err) {
-    sendJson(res, 400, { error: err?.message || "Невалидна заявка", code: "bad_request" });
-    return;
-  }
-
-  const trimKey = (v) => String(v || "").trim().replace(/^["']|["']$/g, "");
-  const envKeys = getApiKeys();
-  const keys = {
-    aiornotKey: trimKey(aiornotKey || envKeys.aiornotKey),
-    geminiKey: trimKey(geminiKey || envKeys.geminiKey),
-  };
-
-  const keyError = missingKeyMessage(keys);
-  if (keyError) {
-    sendJson(res, 400, { error: keyError, code: "missing_keys" });
-    return;
-  }
-
-  const { analyzeImage } = await import("../lib/analyze.mjs");
-  const result = await analyzeImage(fileBuffer, filename, mimeType, keys);
-  sendJson(res, 200, buildAnalyzePayload(result));
-});
+}

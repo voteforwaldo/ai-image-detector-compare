@@ -1,34 +1,43 @@
-import { readJsonBody, sendJson, withJson } from "../lib/api-util.mjs";
 import {
   isAuthRequired,
   verifyPassword,
   buildSessionCookie,
 } from "../lib/site-auth.mjs";
 
-export default withJson(async (req, res) => {
-  if (req.method !== "POST") {
-    sendJson(res, 405, { error: "Методът не е позволен" });
-    return;
-  }
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
 
+function json(body, status = 200, extra = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", ...CORS, ...extra },
+  });
+}
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
+export async function POST(request) {
   if (!isAuthRequired()) {
-    sendJson(res, 200, { ok: true, required: false });
-    return;
+    return json({ ok: true, required: false });
   }
 
   let body = {};
   try {
-    body = await readJsonBody(req);
+    body = await request.json();
   } catch {
-    sendJson(res, 400, { error: "Невалиден JSON в заявката" });
-    return;
+    return json({ error: "Невалиден JSON в заявката" }, 400);
   }
 
   if (!verifyPassword(body.password)) {
-    sendJson(res, 401, { error: "Грешна парола" });
-    return;
+    return json({ error: "Грешна парола" }, 401);
   }
 
-  res.setHeader("Set-Cookie", buildSessionCookie());
-  sendJson(res, 200, { ok: true, required: true });
-});
+  return json({ ok: true, required: true }, 200, {
+    "Set-Cookie": buildSessionCookie(),
+  });
+}

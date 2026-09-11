@@ -1,14 +1,26 @@
-import { sendJson, withJson } from "../lib/api-util.mjs";
 import { isAuthRequired, isAuthenticated } from "../lib/site-auth.mjs";
 
-export default withJson(async (req, res) => {
-  if (req.method !== "GET") {
-    sendJson(res, 405, { error: "Методът не е позволен" });
-    return;
-  }
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
 
-  sendJson(res, 200, {
-    required: isAuthRequired(),
-    authenticated: isAuthenticated(req.headers.cookie),
+function json(body, status = 200, extra = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", ...CORS, ...extra },
   });
-});
+}
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
+export function GET(request) {
+  const cookie = request.headers.get("cookie") || "";
+  return json({
+    required: isAuthRequired(),
+    authenticated: isAuthenticated(cookie),
+  });
+}
