@@ -577,6 +577,22 @@ function updateCard(prefix, data) {
   aiBar.style.width = `${ai}%`;
   humanBar.style.width = `${human}%`;
   summaryEl.textContent = data.summary || "";
+
+  if (prefix === "aon") {
+    const dfPct = $("#aon-deepfake-pct");
+    const dfBar = $("#aon-deepfake-bar");
+    if (dfPct && dfBar) {
+      if (data.deepfakePercent == null) {
+        dfPct.textContent = "—";
+        dfBar.style.width = "0%";
+      } else {
+        const df = data.deepfakePercent;
+        const mark = data.deepfakeDetected ? "открит" : "не";
+        dfPct.textContent = `${df}% (${mark})`;
+        dfBar.style.width = `${df}%`;
+      }
+    }
+  }
   return data;
 }
 
@@ -828,7 +844,13 @@ async function runAnalysis() {
 
     if (data.aiornot?.ok) {
       updateAiornotGenerators(data.aiornot.generators);
-      log(`AI or Not: ${verdictLabel(data.aiornot.verdict)} (${data.aiornot.aiPercent}% ИИ)`);
+      log(
+        `AI or Not: ${verdictLabel(data.aiornot.verdict)} (ИИ ${data.aiornot.aiPercent}%` +
+          (data.aiornot.deepfakePercent != null
+            ? `, deepfake ${data.aiornot.deepfakePercent}%`
+            : "") +
+          ")"
+      );
     } else {
       log(`AI or Not — грешка: ${data.aiornot?.error}`, "error");
     }
