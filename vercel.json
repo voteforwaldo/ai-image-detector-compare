@@ -1,9 +1,10 @@
 ﻿{
   "version": 2,
   "functions": {
-    "api/**/*.mjs": {
+    "server.mjs": {
       "maxDuration": 300,
-      "memory": 1024
+      "memory": 1024,
+      "includeFiles": "public/**"
     }
   }
 }
