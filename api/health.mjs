@@ -10,7 +10,7 @@ export function OPTIONS() {
 
 export function GET() {
   return new Response(
-    JSON.stringify({ ok: true, service: "ai-image-detector", entry: "web-handler" }),
+    JSON.stringify({ ok: true, service: "ai-image-detector", entry: "api-web-v4" }),
     {
       status: 200,
       headers: { "Content-Type": "application/json; charset=utf-8", ...CORS },
