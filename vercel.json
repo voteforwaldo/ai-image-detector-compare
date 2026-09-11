@@ -2,12 +2,9 @@
   "version": 2,
   "installCommand": "rm -rf node_modules && npm ci --omit=dev",
   "functions": {
-    "server.mjs": {
+    "api/**/*.mjs": {
       "maxDuration": 300,
-      "includeFiles": "{public/**,lib/**,node_modules/sharp/**,node_modules/@img/**}"
+      "memory": 1024
     }
-  },
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/server.mjs" }
-  ]
+  }
 }
