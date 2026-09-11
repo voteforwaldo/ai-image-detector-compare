@@ -1,6 +1,5 @@
-{
+﻿{
   "version": 2,
-  "installCommand": "rm -rf node_modules && npm ci --omit=dev",
   "functions": {
     "api/**/*.mjs": {
       "maxDuration": 300,

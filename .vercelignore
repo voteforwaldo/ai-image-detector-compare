@@ -1,4 +1,3 @@
-dev-server.mjs
-server.mjs
+﻿dev-server.mjs
 .env
 .env.*
