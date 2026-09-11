@@ -341,6 +341,31 @@ body {
   line-height: 1.45;
 }
 
+.external-verify-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.external-verify-video {
+  display: block;
+  width: 2.75rem;
+  height: 0.4rem;
+  margin: 0.15rem 0 0.1rem;
+  background: var(--fc-red);
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.external-verify-legend .external-verify-video {
+  display: inline-block;
+  width: 1.6rem;
+  height: 0.35rem;
+  margin: 0;
+  vertical-align: middle;
+}
+
 .external-verify-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
