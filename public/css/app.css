@@ -322,6 +322,81 @@ body {
   line-height: 1.35;
 }
 
+.external-verify {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.external-verify-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.external-verify-note {
+  margin: 0 0 0.85rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.external-verify-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+}
+
+@media (max-width: 720px) {
+  .external-verify-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.external-verify-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.external-verify-card:hover {
+  border-color: var(--fc-red);
+  background: var(--drop-hover);
+}
+
+.external-verify-brand {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.external-verify-name {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.external-verify-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-bottom: 0.25rem;
+}
+
+.external-verify-cta {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--fc-red);
+}
+
 .drop-icon {
   color: var(--fc-red);
   margin-bottom: 0.75rem;
