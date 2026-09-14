@@ -310,7 +310,8 @@ function renderSynthidBanner(synthid) {
     fcSynthidBanner.textContent = "";
     return;
   }
-  fcSynthidBanner.textContent = "Synth ID - Открит";
+  fcSynthidBanner.textContent =
+    "Възможен SynthID (локален екран) — потвърдете на synthid.withgoogle.com";
   fcSynthidBanner.className = "fc-synthid-banner is-detected";
   fcSynthidBanner.classList.remove("hidden");
 }
@@ -319,40 +320,56 @@ function updateSynthid(data) {
   if (!synthidPanel) return;
   synthidPanel.classList.add("hidden");
   synthidHeadline.textContent = "";
+  synthidHeadline.className = "synthid-headline";
   synthidSummary.textContent = "";
   synthidStats.innerHTML = "";
   synthidDetail.textContent = "";
   synthidError.classList.add("hidden");
   synthidError.textContent = "";
+  synthidPanel.querySelectorAll(".synthid-resolution-note").forEach((el) => el.remove());
 
-  if (!data?.ok || !data.detected) {
+  if (!data) return;
+
+  if (!data.ok) {
+    synthidPanel.classList.remove("hidden");
+    synthidHeadline.textContent = "SynthID — грешка";
+    synthidHeadline.className = "synthid-headline tier-clean";
+    synthidError.textContent = data.error || "Неуспешен анализ";
+    synthidError.classList.remove("hidden");
     return;
   }
 
   synthidPanel.classList.remove("hidden");
-
-  synthidHeadline.textContent = "Synth ID - Открит";
-  synthidHeadline.className = "synthid-headline tier-detected";
+  const detected = Boolean(data.detected);
+  synthidHeadline.textContent =
+    data.headline || (detected ? "Възможен сигнал" : "Няма потвърден сигнал");
+  synthidHeadline.className = `synthid-headline ${detected ? "tier-likely" : "tier-clean"}`;
   synthidSummary.textContent = data.summary || "";
-  synthidPanel.querySelectorAll(".synthid-resolution-note").forEach((el) => el.remove());
+
   if (data.resolutionNote) {
     const note = document.createElement("p");
     note.className = "synthid-resolution-note";
     note.textContent = data.resolutionNote;
     synthidSummary.insertAdjacentElement("afterend", note);
   }
+
+  const official = data.officialUrl || "https://synthid.withgoogle.com";
+  const officialNote = document.createElement("p");
+  officialNote.className = "synthid-resolution-note";
+  officialNote.innerHTML = `Официална проверка: <a href="${escHtml(official)}" target="_blank" rel="noopener noreferrer">${escHtml(official)}</a>`;
+  const after = synthidPanel.querySelector(".synthid-resolution-note") || synthidSummary;
+  after.insertAdjacentElement("afterend", officialNote);
+
   synthidDetail.textContent = data.detailText || "";
 
   const stats = [
-    ["Фазово съвпадение", data.phaseMatch != null ? `${(data.phaseMatch * 100).toFixed(1)}%` : "—"],
+    ["Фаза", data.phaseMatch != null ? `${(data.phaseMatch * 100).toFixed(1)}%` : "—"],
     [
-      "Универсални носители",
+      "Универсален",
       data.universalPhase != null ? `${(data.universalPhase * 100).toFixed(1)}%` : "—",
     ],
-    ["Увереност", data.confidencePercent != null ? `${data.confidencePercent}%` : "—"],
-    ["Профил", data.profileKey || "—"],
-    ["Модел", data.modelUsed || "—"],
-    ["Резолюция", data.exactResolution ? "точна" : "приближена"],
+    ["Резолюция", data.exactResolution ? "точна" : "resize (без detect)"],
+    ["Тип", "неофициален локален екран"],
   ];
   for (const [label, value] of stats) {
     const dt = document.createElement("dt");
@@ -675,7 +692,8 @@ function buildReportText() {
   text += `\n--- Подробности ---\n`;
   if (aiornot?.ok) text += `AI or Not: ${aiornot.summary || ""}\n`;
   if (gemini?.ok) text += `Gemini: ${gemini.summary || ""}\n`;
-  if (synthid?.ok && synthid.detected) text += `Synth ID: Открит — ${synthid.summary || ""}\n`;
+  if (synthid?.ok && synthid.detected) text += `SynthID (локален екран): възможен сигнал — ${synthid.summary || ""}\n`;
+  else if (synthid?.ok) text += `SynthID (локален екран): няма потвърден сигнал\n`;
   if (exiftool?.ok) text += `ExifTool: ${exiftool.summary || ""}\n`;
   return text;
 }
@@ -720,9 +738,9 @@ function buildPrintHtml() {
     <p><strong>Gemini:</strong></p>
     <pre>${escHtml(gemini?.ok ? gemini.summary : gemini?.error || "—")}</pre>
     ${
-      synthid?.ok && synthid.detected
-        ? `<p><strong>Synth ID:</strong></p>
-    <pre>${escHtml(synthid.detailText || synthid.summary || "Открит")}</pre>`
+      synthid?.ok
+        ? `<p><strong>SynthID (локален екран):</strong></p>
+    <pre>${escHtml(synthid.detailText || synthid.summary || synthid.headline || "—")}</pre>`
         : ""
     }
     <p><strong>ExifTool:</strong></p>

@@ -87,8 +87,8 @@ function overallHeadline(aiMatch, gemini) {
 
 
 export const SYNTHID_EXPLAINER_PARAGRAPHS = [
-  "SynthID е специален, невидим за човешкото око цифров печат, разработен от Google, който се поставя върху изображения и звуци, за да покаже, че са създадени или променени с помощта на изкуствен интелект.",
-  "Ако такъв печат бъде открит на дадена снимка, това означава просто, че тя не е истинска фотография, заснета от човек с фотоапарат, а е направена или сериозно преработена от компютърна програма с изкуствен интелект.",
+  "SynthID е невидим цифров печат на Google. Само официалният детектор на Google (synthid.withgoogle.com) е меродавен.",
+  "Локалният спектрален екран тук е неофициален скрининг. При разлика с официалния сайт — вярвайте на Google, не на локалния резултат.",
 ];
 
 function buildBullets({ aiornot, gemini, focusRegions, aiMatch }) {
@@ -188,12 +188,14 @@ export function buildFactcheckReport({ aiornot, gemini, exiftool, synthid, fileN
     },
   ];
 
-  if (synthid?.ok && synthid.detected) {
+  if (synthid?.ok) {
     rows.push({
-      source: "Synth ID",
-      verdict: "Открит",
-      detail: "",
-      tone: "synthid-detected",
+      source: "SynthID (локален екран)",
+      verdict: synthid.detected ? "Възможен сигнал" : "Няма потвърден",
+      detail: synthid.detected
+        ? "Неофициално — потвърдете на synthid.withgoogle.com"
+        : "Официалната проверка: synthid.withgoogle.com",
+      tone: synthid.detected ? "synthid-detected" : "uncertain",
       noRating: true,
     });
   }
