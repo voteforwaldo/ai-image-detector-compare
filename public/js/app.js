@@ -78,6 +78,10 @@ let keys = { aiornot: "", gemini: "" };
 let lastResult = null;
 let lastReport = null;
 let previewObjectUrl = null;
+let analysisGen = 0;
+let analysisAbort = null;
+
+const authGateStatus = $("#auth-gate-status");
 
 function escHtml(s) {
   return String(s ?? "")
@@ -135,12 +139,18 @@ function showToast(msg) {
 
 function showApp() {
   authGate.classList.add("hidden");
+  authGate.removeAttribute("aria-busy");
   appRoot.classList.remove("hidden");
 }
 
 function showAuthGate() {
   authGate.classList.remove("hidden");
+  authGate.removeAttribute("aria-busy");
   appRoot.classList.add("hidden");
+  if (authGateStatus) {
+    authGateStatus.textContent = "Въведете парола за достъп";
+  }
+  authForm?.classList.remove("hidden");
 }
 
 function showAuthGateError(message) {
@@ -535,6 +545,15 @@ function setFile(file) {
 }
 
 function resetUpload() {
+  if (analysisAbort) {
+    try {
+      analysisAbort.abort();
+    } catch {
+      /* ignore */
+    }
+    analysisAbort = null;
+  }
+  analysisGen += 1;
   if (previewObjectUrl) {
     URL.revokeObjectURL(previewObjectUrl);
     previewObjectUrl = null;
@@ -549,6 +568,7 @@ function resetUpload() {
   layout.classList.remove("has-results");
   fcReport.classList.add("hidden");
   hideAnalyzeError();
+  hideLoading(false);
   mobileBar.classList.add("hidden");
   fileInput.value = "";
   renderFocusOverlay([]);
@@ -567,15 +587,17 @@ function updateCard(prefix, data) {
   const summaryEl = $(`#${prefix}-summary`);
   const errorEl = $(`#${prefix}-error`);
 
+  if (!verdictEl || !errorEl) return null;
+
   errorEl.classList.add("hidden");
   errorEl.textContent = "";
 
-  if (!data.ok) {
+  if (!data?.ok) {
     verdictEl.textContent = "Грешка";
     verdictEl.className = "verdict-badge uncertain";
-    confEl.textContent = "";
-    summaryEl.textContent = "";
-    errorEl.textContent = data.error || "Заявката не успя";
+    if (confEl) confEl.textContent = "";
+    if (summaryEl) summaryEl.textContent = "";
+    errorEl.textContent = data?.error || "Заявката не успя";
     errorEl.classList.remove("hidden");
     return null;
   }
@@ -586,14 +608,21 @@ function updateCard(prefix, data) {
 
   const ai = data.aiPercent ?? 0;
   const human = data.humanPercent ?? 0;
-  const mainConf = Math.max(ai, human);
+  const mainConf =
+    data.confidencePercent != null
+      ? data.confidencePercent
+      : v === "ai"
+        ? ai
+        : v === "human"
+          ? human
+          : Math.max(ai, human);
 
-  confEl.textContent = `${mainConf}% сигурност`;
-  aiPct.textContent = `${ai}%`;
-  humanPct.textContent = `${human}%`;
-  aiBar.style.width = `${ai}%`;
-  humanBar.style.width = `${human}%`;
-  summaryEl.textContent = data.summary || "";
+  if (confEl) confEl.textContent = `${mainConf}% сигурност`;
+  if (aiPct) aiPct.textContent = `${ai}%`;
+  if (humanPct) humanPct.textContent = `${human}%`;
+  if (aiBar) aiBar.style.width = `${ai}%`;
+  if (humanBar) humanBar.style.width = `${human}%`;
+  if (summaryEl) summaryEl.textContent = data.summary || "";
 
   if (prefix === "aon") {
     const dfPct = $("#aon-deepfake-pct");
@@ -621,9 +650,18 @@ function updateExiftool(data) {
   exifError.classList.add("hidden");
   exifError.textContent = "";
 
+  const methodLabel = $("#exif-method-label");
+  const method = data?.method || (data?.ok ? "exifr" : null);
+  if (methodLabel) {
+    methodLabel.textContent =
+      method === "exiftool-vendored"
+        ? "Пълен ExifTool · обяснения на български"
+        : "EXIF/XMP чрез exifr · на Vercel няма пълен ExifTool/C2PA";
+  }
+
   if (!data?.ok) {
     exifSummary.textContent = "Метаданните не можаха да се прочетат.";
-    exifError.textContent = data?.error || "ExifTool заявката не успя";
+    exifError.textContent = data?.error || "Четенето на метаданни не успя";
     exifError.classList.remove("hidden");
     return;
   }
@@ -644,8 +682,9 @@ function updateExiftool(data) {
   }
 
   const fields = data.allFields || [];
+  const toolName = method === "exiftool-vendored" ? "ExifTool" : "exifr";
   if (exifAllHeading) {
-    exifAllHeading.textContent = `Всички полета от ExifTool (${fields.length})`;
+    exifAllHeading.textContent = `Всички полета (${toolName}, ${fields.length})`;
     exifAllHeading.classList.remove("hidden");
   }
   if (fields.length) {
@@ -660,7 +699,7 @@ function updateExiftool(data) {
   } else {
     const empty = document.createElement("p");
     empty.className = "exif-empty";
-    empty.textContent = "ExifTool не върна полета с метаданни за този файл.";
+    empty.textContent = `${toolName} не върна полета с метаданни за този файл.`;
     exifAllFields.appendChild(empty);
   }
 }
@@ -773,9 +812,20 @@ function printReportPdf() {
 async function runAnalysis() {
   if (!selectedFile) return;
 
+  if (analysisAbort) {
+    try {
+      analysisAbort.abort();
+    } catch {
+      /* ignore */
+    }
+  }
+  const gen = ++analysisGen;
+  const ctrl = new AbortController();
+  analysisAbort = ctrl;
+
   loadKeys();
   clearTerminal();
-  log("Анализира се с AI or Not, Gemini и ExifTool...");
+  log("Анализира се с AI or Not, Gemini и метаданни...");
   resultsPanel.classList.remove("hidden");
   layout.classList.add("has-results");
   updateStep(2);
@@ -789,8 +839,8 @@ async function runAnalysis() {
 
   try {
     await checkServerHealth();
+    if (gen !== analysisGen) return;
 
-    const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 300000);
 
     const res = await fetch(`${apiBase()}/api/analyze`, fetchOpts({
@@ -799,8 +849,11 @@ async function runAnalysis() {
       signal: ctrl.signal,
     }));
     clearTimeout(timeout);
+    if (gen !== analysisGen) return;
 
     const data = await safeJson(res);
+    if (gen !== analysisGen) return;
+
     if (res.status === 401 && data.code === "auth_required") {
       showAuthGate();
       log("Нужен е вход с парола.", "error");
@@ -882,12 +935,13 @@ async function runAnalysis() {
     }
 
     if (data.exiftool?.ok) {
+      const tool = data.exiftool.method === "exiftool-vendored" ? "ExifTool" : "exifr";
       const exifNote = data.exiftool.hasAiMarkers
         ? "ИИ маркери в метаданни"
         : `${data.exiftool.allFields?.length ?? data.exiftool.tagCount ?? 0} полета`;
-      log(`ExifTool: ${exifNote}`);
+      log(`${tool}: ${exifNote}`);
     } else {
-      log(`ExifTool — грешка: ${data.exiftool?.error}`, "error");
+      log(`Метаданни — грешка: ${data.exiftool?.error}`, "error");
     }
 
     if (data.synthid?.ok) {
@@ -898,6 +952,7 @@ async function runAnalysis() {
 
     log("Готово.");
   } catch (err) {
+    if (gen !== analysisGen || err?.name === "AbortError") return;
     hideLoading(false);
     updateStep(2);
     const friendly = fetchErrorMessage(err);
@@ -1030,10 +1085,15 @@ function boot() {
   try {
     initTheme();
     updateStep(1);
-    initAuth().then(() => loadKeys());
+    initAuth()
+      .then(() => loadKeys())
+      .catch((err) => {
+        console.error("Auth init:", err);
+        showAuthGateError("Неуспешна проверка на достъпа. Презаредете страницата.");
+      });
   } catch (err) {
     console.error("Стартиране:", err);
-    showApp();
+    showAuthGateError("Грешка при стартиране. Презаредете страницата.");
   }
 }
 

@@ -21,11 +21,11 @@
     </script>
   </head>
   <body>
-    <div class="auth-gate hidden" id="auth-gate">
+    <div class="auth-gate" id="auth-gate" aria-busy="true">
       <div class="auth-card">
         <img class="auth-logo" src="img/factcheck-logo.png" alt="factcheck.bg" />
         <h2>ИИ инструмент</h2>
-        <p>Въведете парола за достъп</p>
+        <p id="auth-gate-status">Проверка на достъпа…</p>
         <button
           type="button"
           class="btn-ghost theme-toggle auth-theme-toggle"
@@ -36,7 +36,7 @@
           <span class="theme-icon theme-icon-light" aria-hidden="true">☀</span>
           <span class="theme-icon theme-icon-dark" aria-hidden="true">☽</span>
         </button>
-        <form id="auth-form">
+        <form id="auth-form" class="hidden">
           <input
             type="password"
             id="auth-password"
@@ -50,7 +50,7 @@
       </div>
     </div>
 
-    <div class="app" id="app-root">
+    <div class="app hidden" id="app-root">
       <header class="topbar">
         <div class="brand">
           <img
@@ -421,10 +421,10 @@
                     target="_blank"
                     rel="noopener noreferrer"
                     class="exif-title-link"
-                    >ExifTool</a
+                    >Метаданни</a
                   >
                 </h3>
-                <p class="provider-sub">Метаданни (EXIF/XMP) · обяснения на български</p>
+                <p class="provider-sub" id="exif-method-label">EXIF/XMP · на Vercel: exifr (не пълен ExifTool)</p>
               </div>
             </header>
             <p class="exif-summary" id="exif-summary"></p>

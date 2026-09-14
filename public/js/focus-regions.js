@@ -92,21 +92,6 @@ const LOGO_ABSENCE_RE =
 const LOGO_ABSENCE_REVERSE =
   /(?:sparkle|ромб|✦|воден\s*знак|видим\s*watermark|видим\s*лого|google\s*sparkle|watermarks?|лого).{0,50}(?:няма|липсва|не\s+(?:са\s+)?открит|не\s+(?:се\s+)?вижда|not\s+found|absent)/i;
 
-const KNOWN_PLATFORM_LOGOS = new Set([
-  "gemini",
-  "google",
-  "google_ai",
-  "imagen",
-  "openai",
-  "chatgpt",
-  "dalle",
-  "midjourney",
-  "adobe",
-  "getty",
-  "shutterstock",
-  "canva",
-]);
-
 export function clamp01(n) {
   const x = Number(n);
   if (Number.isNaN(x)) return 0;
@@ -163,13 +148,6 @@ function isLogoLikeRegion(r) {
 export function hasPositiveLogoEvidence(text, gemini) {
   if (gemini?.googleSparkle === true) return true;
 
-  const pl = String(gemini?.platformLogo || "")
-    .toLowerCase()
-    .trim();
-  if (pl && pl !== "none" && pl !== "unknown" && KNOWN_PLATFORM_LOGOS.has(pl.replace(/\s+/g, "_"))) {
-    return true;
-  }
-
   if (!text) return false;
   const t = text.trim();
   if (!t) return false;
@@ -178,6 +156,7 @@ export function hasPositiveLogoEvidence(text, gemini) {
     return false;
   }
 
+  // Do not trust platformLogo enum alone — Gemini often hallucinates "gemini".
   return POSITIVE_LOGO_EVIDENCE_RE.some((re) => re.test(t));
 }
 
